@@ -1,0 +1,47 @@
+# vim:set ft=sh:
+#
+# (re)builds cscope database for Linux kernel and checkpoint/restart sources
+
+KROOT="@LINUX_SRC@"
+CR_ROOT="@TOP_SRCDIR@"
+BUILD_DIR="@TOP_BUILDDIR@"
+
+if [ ! -d "$KROOT" ]; then
+    echo "Invalid \$LINUX_SRC directory: '$LINUX_SRC'"
+    exit -1
+fi
+
+if [ -z "$CR_ROOT" ]; then
+    echo "Must set \$CR_ROOT"
+    exit -1
+fi
+
+###  Build list of files to index
+
+# 'find' doesn't recurse into symlinks: neither bld/src dirs are symlinks, but
+# linux src often is
+cd $KROOT; KROOT=`pwd -P`; cd -
+
+# go to / to store absolute paths in the cscope database
+cd / 	
+
+
+find  $KROOT $CR_ROOT                                                             \
+	-path "$KROOT/arch/*" ! -path "$KROOT/arch/i386*" -prune -o               \
+	-path "$KROOT/include/asm-*" ! -path "$KROOT/include/asm-i386*" -prune -o \
+	-path "$KROOT/tmp*" -prune -o                                             \
+	-path "$KROOT/Documentation*" -prune -o                                   \
+	-path "$KROOT/scripts*" -prune -o                                         \
+	-path "$KROOT/drivers*" -prune -o                                         \
+	-type l -prune -o                                                         \
+	-name "*.[chxsS]" -print >${BUILD_DIR}/cscope.files
+
+
+### Build cscope database
+
+cd $BUILD_DIR
+
+# -q for inverted index (for fast symbol lookup)
+# -b to build ref only: no interaction
+cscope -q -b 
+

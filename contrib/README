@@ -1,0 +1,32 @@
+Contents of the contrib directory
+
+* batch_build.in
+  This is source for contrib/batch_build, which is built at configure time.
+  The resulting script can be invoked with a list of kernel build directories
+  and will attempt to build BLCR against each of the listed kernels.  A
+  significant part of the code deals with the /boot/kernel.h mechanism used
+  by Red Had Linux 8 and 9 (among other distributions).
+
+* blcr.magic
+  This is file type detection data for the file(1), as described in the
+  magic(5) manpage.  In most cases adding this to /etc/magic will allow
+  the file(1) utility to identify BLCR's context files.  However, you
+  should consult your file(1) and magic(5) manpages to determine the
+  proper location for your own installation.
+
+* cr_depmod
+  This is a perl script we use as a replacement for the depmod(8)
+  utility.  It is not a full replacement: it only checks for unresolved
+  symbol references.  We wrote this because the depmod(8) interface
+  changed on us a couple times.
+
+* cr_insmod.in
+  This is source for contrib/cr_insmod, which is built at configure time.
+  It used to contain a script to load the appropriate kernel modules.
+  Now that function is in BLCR's top-level Makefile, and this script is
+  now just a one-liner to invoke make.
+
+* gen_cscope.in
+  This is source for contrib/gen_scope, which is built at configure time.
+  We use the resulting script to contruct a cscope(1) database of the
+  combined BLCR and kernel sources.

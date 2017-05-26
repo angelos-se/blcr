@@ -1,0 +1,52 @@
+This directory contains a number of example programs, each in its
+own directory with its own Makefile.
+
+NOTE: These are not "supported" in the sense of providing any particular
+value to you.  We provide these in case they might be usefull.  These
+examples are not written as templates for developing BLCR client codes.
+However, pthread_misc and io_bench do contain some of the basics.
+
+We hope that in the future we can revise and expand the examples to
+make them suitable as templates for developing BLCR client codes.
+
+
+1) Example checkpoint "targets".  
+   These are a few simple variations on a theme that can be used to
+   play with BLCR.  You run an example and can checkpoint and restart
+   it seeing that BLCR works as expected.
+   * counting
+     This is a simple program that counts from 0 to 119, with 1 second
+     pauses between each count.  When restarting it will go back to the
+     count value when the checkpoint was taken.
+   * pipe_counting
+     This program is a more complicated version of the basic counting
+     example.  The process fork()s a child which does the printing of
+     counts.  The actual count values are passed from parent to child
+     through a pipe.  So, this example demonstates that BLCR will
+     restore that pipe when checkpointing the two processes together.
+   * pthread_counting
+     This program is a multi-threaded (using pthreads) variation on
+     the basic counting example.  In this case there are 3 threads that
+     take turns producing output.  So, this demonstrates that BLCR is
+     able to restore multi-threaded apps and their pthread synchronization
+     primitives (a mutex and a condition variable in this case).
+   * file_counting
+     This example is similar to "counting", except that the output is
+     to the file "outfile".  Because BLCR records the length of the file
+     when checkpointing, a restart will rewind the file back to its
+     pre-checkpoint length at each restart.  Therefore the file will
+     never contain duplicate counts.
+
+2) Example BLCR "clients".
+   * pthread_misc
+     This example initializes the BLCR library and registers a callback
+     to be invoked at checkpoint time.  In this simple example the 
+     callback is simply used to record a timestamp for the checkpoint,
+     which is printed at restart.
+
+3) Example benchmark
+   * io_bench
+     This program takes a single argument: a size in MiB.  It allocates
+     (and touches) the corresponding amount of memory and then takes a
+     checkpoint of itself.  It reports the allocated heap size and the
+     amount of time required for the checkpoint.

@@ -1,0 +1,119 @@
+#!/bin/sh
+#
+# chkconfig:	345 90 01
+# description:  Load and unload BLCR kernel modules
+#
+# $Id: blcr.rc,v 1.17.14.2 2013/07/24 21:13:22 phargrov Exp $
+
+### BEGIN INIT INFO
+# Provides:          blcr
+# Required-Start:    
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Load BLCR kernel modules
+# Description:       This file loads the kernel modules required for
+#                    Berkeley Lab Checkpoint/Restart (BCLR).
+#                    Visit http://ftg.lbl.gov/checkpoint for information.
+### END INIT INFO
+
+# The only likely configuration is these three variables:
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+module_dir=@MODULE_DIR@
+if [ -d /var/lock/subsys ]; then
+  blcr_lock=/var/lock/subsys/blcr
+else
+  blcr_lock=/var/lock/blcr
+fi
+
+# Default versions if disto-specific ones are lacking.
+success() {
+  echo "Success!"
+}
+failure() {
+  echo "Failure!"
+}
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ] ; then
+  . /etc/rc.d/init.d/functions
+fi
+
+do_checkmod() {
+	lsmod | grep "^$1 " >/dev/null 2>&1
+	return $?
+}
+
+# Try modprobe by default, but fallback on insmod+fullpath
+do_insmod() {
+	(modprobe $1 >/dev/null 2>&1) || (do_checkmod $1 || insmod ${module_dir}/${1}.ko)
+}
+
+# Try modprobe -r by default, but fallback on rmmod
+do_rmmod() {
+	(modprobe -r $1 >/dev/null 2>&1) || (do_checkmod $1 && rmmod $1)
+}
+
+do_start() {
+	echo -n "Loading BLCR: "
+	if test ! -d ${module_dir}; then
+	    echo -n "no ${module_dir} "
+	    failure
+	else
+	    (do_insmod blcr_imports && \
+	     do_insmod blcr && \
+	     touch $blcr_lock && success) || failure
+	fi
+	echo
+}
+
+do_stop() {
+	echo -n "Unloading BLCR: "
+	(do_rmmod blcr && \
+	 do_rmmod blcr_imports && \
+	 rm -f $blcr_lock && success) || failure
+	echo
+}
+
+case "$1" in
+  start)
+	do_start
+	;;
+  stop) 
+	do_stop
+	;;
+  restart | force-reload)
+	do_stop
+	do_start
+	;;
+  reload)
+	if [ -f $blcr_lock ]; then
+	    do_stop
+	    do_start
+	fi
+	;;
+  status)
+	if [ -f $blcr_lock ]; then
+	    do_checkmod blcr && rc1=1 || rc1=0
+	    do_checkmod blcr_imports && rc2=1 || rc2=0
+	    if [ "x$rc1$rc2" != "x11" ] ; then
+		msg="BLCR subsytem lock exists, but the following is/are not loaded:"
+		[ $rc1 -ne 1 ] && msg="$msg blcr"
+		[ $rc2 -ne 1 ] && msg="$msg blcr_imports"
+		echo "$msg"
+		exit 2
+	    fi
+	    echo "BLCR subsytem is active"
+	    exit 0
+	else
+	    echo "BLCR subsytem is stopped"
+	    exit 3
+	fi
+	;;
+  *)
+	echo "*** Usage: blcr {start|stop|restart|reload|status}"
+	exit 1
+esac
+
+exit 0

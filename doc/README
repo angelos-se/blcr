@@ -1,0 +1,34 @@
+The html subdirectory contains versions of the documentation on the BLCR
+website (http://ftg.lbl.gov/checkpoint) which were current at the time
+this BLCR distribution was packaged:
+
+html/BLCR_Admin_Guide.html      Installation and configuration information
+html/BLCR_Users_Guide.html      General Users' Guide
+html/FAQ.html                   Frequently Asked Questions with answers
+
+You may find more up-to-date versions on the web, but should take care
+that the information obtained from the website may not pertain to this
+specific BLCR distribution.
+
+You may also wish to consult the following BLCR man pages for information
+on using the BLCR utilities:
+     cr_checkpoint    Checkpoint a running process (or group of processes)
+     cr_restart       Restart processes from a checkpoint
+     cr_run           Run a program with BLCR support added via LD_PRELOAD
+
+For API documentation for libcr, you must currently rely on the comments
+in libcr.h.  More formal/useful documentation is planned when the API is
+more complete.
+
+For reporting bugs (or finding the status of known bugs), please visit our
+Bugzilla at http://mantis.lbl.gov/bugzilla
+
+Additionally, answers to your questions may exist in our mailing list
+archives at
+  https://hpcrdm.lbl.gov/pipermail/checkpoint/index.html
+or, for posts prior to May, 2010:
+  http://mantis.lbl.gov/hypermail/checkpoint/index.html
+
+Feel free to e-mail any questions not answered by the documentation to
+our mailing list:
+     checkpoint@lbl.gov

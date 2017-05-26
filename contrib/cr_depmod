@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+#   Berkeley Lab Checkpoint/Restart (BLCR) for Linux is Copyright (c)
+#   2007, The Regents of the University of California, through Lawrence
+#   Berkeley National Laboratory (subject to receipt of any required
+#   approvals from the U.S. Dept. of Energy).  All rights reserved.
+#
+#   Portions may be copyrighted by others, as may be noted in specific
+#   copyright notices within specific files.
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# This script is a depmod replacement
+# It expects the System.map file on STDIN and the modules to check as args
+
+use strict vars;
+
+my $result = 0;
+my %exports = ();
+my %imports = ();
+my $file;
+my $nm = $ENV{'NM'} || 'nm -B';
+
+# Get exported symbols from System.map (or nm vmlinux).
+$exports{__this_module} = 1;
+while (<STDIN>) {
+  if (/ksymtab_(.*)$/) { $exports{$1} = 1; }
+  # The following is a HACK to deal with SPARC linker entries for global registers
+  elsif (/sparc_cpu_type/) { $exports{'current_thread_info_reg'} = 1; }
+}
+
+# Scan module files for both exports and imports, striping modversions
+for $file (@ARGV) {
+  (my $shortname = $file) =~ s,^.*/,,;
+  open NM, "$nm $file |" || die "failed to 'nm $file'";
+  while (<NM>) {
+    if (/ksymtab_(.*)$/) {
+      $exports{$1} = 1;
+    } elsif (/\sU\s+\.?(.+?)(_R(smp_)?[[:xdigit:]]{8})?$/) {
+      $imports{$1} = $shortname;
+    }
+  }
+}
+
+# Output any unresolved imports
+foreach (keys (%imports)) {
+    next if (exists $exports{$_});
+    print "cr_depmod:  $_\tunresolved in $imports{$_}\n";
+    $result = 1;
+}
+
+exit $result;

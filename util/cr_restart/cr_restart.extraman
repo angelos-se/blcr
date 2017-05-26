@@ -1,0 +1,296 @@
+[DESCRIPTION] 
+
+cr_restart restarts a process (or set of processes) from a checkpoint file
+created with 
+.BR cr_checkpoint (1).  
+
+A restarted process has all of the attributes they had at checkpoint time,
+including its process id.  If any needed resources cannot be attained for the
+processes in a checkpoint file (ex: a pid is in use), cr_restart will fail.  If
+a process group or session is restarted, all parent/child relations and pipes,
+etc., between the processes in the checkpoint will be correctly restored.
+
+If the 
+.IR stdin / stdout / stderr 
+of any restarted process was directed to a terminal
+at checkpoint time, it is redirected to the controlling terminal of the
+cr_restart program.
+
+The current working directory of a restarted process is the same as when it was
+checkpointed, regardless of where the context file is located, or where
+cr_restart is invoked.
+
+The cr_restart process becomes the parent of the 'eldest' process in any
+restarted job.  This means that 
+.BR getppid (2) 
+may return a different value to the
+eldest process after restart.  When the eldest restarted process exits (or dies
+from a signal), cr_restart will exit with the same error code (or kill itself
+with the same signal), so it is largely invisible (it is necessary to keep
+cr_restart `in-between' your shell and restarted processes, however, as most
+Unix shells get quite confused if they observe their children changing process
+ids).
+
+.SS Signals
+By default restarted processes begin to run after the restart is
+complete.  Alternatively, you may specify that they be stopped (via 
+.BR --stop ),
+or terminated/aborted/killed (via 
+.BR --term , 
+.BR --abort ,
+or 
+.BR --kill ).
+This is done by sending the appropriate signal to every process that is part of
+the restart.
+If the processes were stopped at the time the checkpoint was requested, then
+.B --cont
+may be used to send SIGCONT to all processes after the restart is completed.
+
+.SS "Error handling"
+By default cr_restart will block until the restarted process has completed,
+and will exit with the same exit value as the restarted process (even if
+the restarted process died with a fatal signal).  This can make it nearly
+impossible to determine if a non-zero exit from cr_restart is due to a
+failure to restart, or is the exit code of a correctly restarted process.
+The simple approach of looking for 'Restart failed:' is not reliable.  Therefore,
+the
+.B --run-on-*
+family of flags are available to supply alternative (or supplementary) error
+handling.  When any of the
+.B --run-on-*
+flags is passed, a hook is installed for the given category of failure (or
+success), as defined below.  When an error (or success) is detected and a
+corresponding hook is installed, the hook is run via the
+.BR system (3)
+function.
+If the exit code of the hook is non-zero, then cr_restart returns this
+value, suppressing any error message that would otherwise be generated.
+If no hook is installed, the hook is an empty string, or if the
+hook returns an exit code of zero, then an explanatory error message is
+printed and an exit code related to the errno value at the time of failure
+is returned.
+
+.TP
+.B --run-on-success='cmd'
+Runs the given command as soon as the restarted process(es) are known
+to be running.  If the return value of 'cmd' is non-zero, this also
+results in cr_restart terminating without waiting on termination of
+the restarted process(es).
+
+.TP
+.B --run-on-fail-args='cmd'
+Runs the given command if the arguments are invalid.  This includes the
+case in which the given context file is missing or unreadable.
+
+.TP
+.B --run-on-fail-temp='cmd'
+Runs the given command if a "temporary" failure is detected.  This includes
+the case of a required pid being in use.
+
+.TP
+.B --run-on-fail-perm='cmd'
+Runs the given command if a "permanent" failure is detected.  This is
+most commonly due to a corrupted context file.
+
+.TP
+.B --run-on-fail-env='cmd'
+Runs the given command if an "environmental" failure is detected.  This
+includes when files required for restarting are missing or inaccessible.
+
+.TP
+.B --run-on-failure='cmd'
+This installs the given command for all of the
+.B --run-on-fail-*
+hooks.
+
+.SS "File relocation"
+By default, files and directories are saved `by reference',
+storing their full pathname in the context file.  This includes
+files associated with a process via
+.BR open (2)
+and/or
+.BR mmap (2)
+and directories associated via
+.BR opendir (3)
+or as the current working directory.
+Use of 
+.B --relocate oldpath=newpath
+allows remapping of such paths to new locations at restart-time.
+
+When parsing the
+.B --relocate
+argument the sequences
+`\\=' and `\\\\' are interpreted as `=' and `\\', respectively,
+to allow for paths that contain the `=' character.
+The `\\' character is not special in any other context.
+(Note that command shells also have special treatment of `\\' and
+you may therefore need quotes or additional `\\' characters to pass the
+argument you intend.)
+
+When file or directory associations are restored, the
+.I oldpath
+is compared to the saved fullpath of each file or
+directory.  If it matches the leading components of the path,
+the matching portion is replaced by the value of
+.IR newpath .
+Note that
+.I oldpath
+must match
+.B entire
+path components, and only
+.B leading
+components.  Therefore an
+.I oldpath
+of
+.I /tmp/foo
+will match
+.I /tmp/foo
+or
+.IR /tmp/foo/1 ,
+but will
+.B not
+match to
+.I /tmp/fooz
+(not matching the full component
+.IR fooz )
+or to
+.I /var/tmp/foo
+(not matching the leading component
+.IR /var .)
+
+It is important to be aware the the saved fullpaths in a context file are
+the canonical paths.  Therefore the
+.I oldpath
+you provide must also be a canonical path, though the
+.I newpath
+doesn't need to be.  For instance, if
+.I /tmp
+is a symbolic link to
+.IR /var/tmp ,
+then if your application opens the file
+.I /tmp/work/1234
+the path stored in the context file will be
+.IR /var/tmp/work/1234 .
+Therefore,
+.RS
+.br
+.B --relocate
+.IR /tmp/work = /tmp/play 
+.RE
+.br
+would
+.B not
+work as desired, but either of the following would:
+.RS
+.br
+.B --relocate
+.IR /var/tmp/work = /tmp/play
+.br
+.B --relocate
+.IR /var/tmp/work = /var/tmp/play
+.RE
+
+If the
+.B --relocate
+option is passed multiple times, all are applied to restored file
+or directory associations, but only the first match is applied to any given path.
+Currently a maximum of 16 relocations is supported.
+
+.SS "PID and related identifiers"
+By default, processes are restarted with the same pid and thread id (as returned by
+.BR getpid (2), 
+and
+.BR gettid (2) 
+respectively).  This default ensures that processes and threads that signal each
+other and processes that wait on children will continue to function correctly.
+However, this prevents restarting concurrent instances of the same context file.
+
+By default, the process group and session (as returned by
+.BR getpgrp (2), 
+and
+.BR getsid (2))
+are set to those of the cr_restart program.  This ensures that job
+control via the requester's session leader (typically a login shell) will continue
+to function correctly.  However, this interferes with any job control or
+process group signaling that may be take place among the restarted processes.
+
+There are options to individually control whether the pid, process group and
+session are restored to their saved values or assume new values (the
+process group and session inherited from cr_restart and a fresh pid obtained
+from
+.BR fork (2)).
+There is no separate control for the thread ids, as they must
+always follow the same policy as the pid.  The following describes each option,
+along with outlining some of the risks associated with the non-default ones:
+
+.TP
+.B --restore-pid
+(default) This causes pid and thread ids to be restored to their saved values.
+
+.TP
+.B --no-restore-pid
+This causes pid and thread ids to assume new values.
+Any multi-threaded process has the possibility of using functions like
+.BR tkill (2)
+which will not behave as desired if the thread ids are not restored.
+Similarly, any multi-process application may make use of
+.BR kill (2)
+or
+.BR waitpid (2),
+among others, that require restored pids for correct operation.
+It is also worth noting that many versions of glibc will cache the
+result of getpid(), which may result in calls after restore returning
+the original value, even though the pid was changed by the restart.
+
+.TP
+.B --restore-pgid
+This causes the process group ids to be restored to their saved values.  This
+is required for correct operation of any multi-process application that may
+perform signal or wait operations on process groups (as by passing a negative
+pid value to
+.BR kill (2)
+or
+.BR waitpid (2),
+among others), or which uses process groups for POSIX job control operations.
+This is NOT the default behavior because restoring the process group ids will
+prevent job control by the requester's shell (or other controlling process).
+
+.TP
+.B --no-restore-pgid
+(default) This causes the restarted processes to join the process group of
+the cr_restart process.
+
+.TP
+.B --restore-sid
+This causes the session ids to be restored to their saved values.  This is
+required, for instance, for systems that are performing batch accounting based
+on the session id.
+
+.TP
+.B --no-restore-sid
+(default) This causes the restarted processes to join the session of
+the cr_restart process.
+
+.P
+Note that use of
+.B --restore-pgid
+or
+.B --restore-sid
+will produce an error in the case that the required identifiers are in use
+in the system.  This includes the possibility that they conflict the the
+process group or session of cr_restart.
+
+[REPORTING BUGS]
+
+Bug reports may be filed on the web at 
+.BR http://mantis.lbl.gov/bugzilla .
+
+[AUTHORS]
+
+Jason Duell, Paul Hargrove, and Eric Roman, Lawrence Berkeley National
+Laboratory.
+
+[SEE ALSO]
+
+.BR cr_run (1), 
+.BR cr_checkpoint (1), 

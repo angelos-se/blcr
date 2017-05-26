@@ -1,0 +1,494 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>BLCR Admin Guide - version 0.8.6_b4</title>
+  <meta http-equiv="Content-Type"
+ content="text/html; charset=ISO-8859-1">
+</head>
+<body>
+<h1>Berkeley Lab Checkpoint/Restart (BLCR) Administrator's Guide</h1>
+This guide describes how to install, configure, and maintain Berkeley
+Lab Checkpoint/Restart (BLCR) for Linux.  For usage instructions
+please see the companion <a href="BLCR_Users_Guide.html">BLCR User's Guide</a>.
+<h2>1. System Requirements</h2>
+BLCR consists of two kernel modules, some user-level libraries, and
+several
+command-line executables. <em>No kernel patching is required.</em>
+<p>BLCR has been engineered to work with a wide range of Linux kernels:
+</p>
+<ul>
+  <li>Many major vendor distributions of Linux. Those tested
+historically have included SuSE,
+RHEL (and clones such as CentOS and Scientific Linux), Fedora, Debian and Ubuntu
+(and this list is NOT exhaustive).</li>
+  <li>Many "vanilla" Linux 2.6.x and 3.x.y kernels (from <a
+ href="http://www.kernel.org/">kernel.org</a>) have also been tested
+with many glibc versions (2.2 and up).<br>
+We believe vanilla versions 2.6.0 through 3.16.2 all work.
+  <li>BLCR uses a set of autoconf-based feature tests to probe the
+kernels it builds against. It is thus likely that a custom kernel based
+on one of the above kernel sources will work with BLCR, provided that
+patches applied to the kernel don't invalidate assumptions BLCR has
+made. </li>
+</ul>
+BLCR uses assembly code to save some program state (most notably the
+CPU
+registers). This means that the BLCR kernel modules are not portable
+across CPU
+architectures "out of the box".
+BLCR has long supported the x86 and x86_64 architectures.&nbsp;
+The 0.6.0 release was the first to include <em>experimental</em>
+support for PowerPC64 and for ARM, while the 0.7.0 release added
+<em>experimental</em> support for 32-bit PowerPC.&nbsp;
+<b>Currently x86 and x86_64 systems are the most fully tested with BLCR,
+with the other architectures tested heavily only at release time</b>.
+
+Porting BLCR to a different CPU is not a large software effort <b>if</b>
+one has sufficient Linux kernel experience and knowledge of the target
+CPU's ABI and instructions.&nbsp;
+Please contact us if you are interested in contributing a port.  We are
+especially interested in somebody with the time and equipment to
+complete the unfinished port to SPARC64.
+
+<h2>2. Installing/Configuring BLCR</h2>
+To build checkpoint/restart, you need the following files:
+<ul>
+  <li> The source code for the <i>configured</i>
+kernel you are building against. </li>
+  <li> <tt>linux/version.h</tt> (a generated file from the kernel
+sources). </li>
+  <li> either the <tt>System.map</tt> or the <tt>vmlinux</tt> file
+for the kernel you are building against. </li>
+  <li> A copy of the BLCR source (blcr-X.Y.Z.tar.gz: see <a
+ href="http://ftg.lbl.gov/checkpoint" target="_top">http://ftg.lbl.gov/checkpoint</a>
+for a link to the latest version). </li>
+</ul>
+If you run into trouble when following the instructions below, make
+sure to
+check
+both our <a href="FAQ.html">FAQ</a> (especially the "Build/Install
+Questions"
+section), and our bug database, located at <a
+ href="http://mantis.lbl.gov/bugzilla/">http://mantis.lbl.gov/bugzilla/</a>.
+Your install problem may have already been solved!
+<h3>2.1 Configuring BLCR</h3>
+<p>BLCR builds and installs much like any other autotools-based
+distribution: <pre>
+    % tar zxf blcr-&lt;VERSION&gt;.tar.gz
+    % cd blcr-&lt;VERSION&gt;
+    % mkdir builddir
+    % cd builddir
+    % ../configure [ options ]
+    % make
+    % make install
+</pre>
+Depending on which kernel you are building against, and where you wish
+to put
+the BLCR libraries, there are a number of options to <tt>configure</tt>
+that you
+need to consider.  The most common of these are described in the
+paragraphs that follow.
+<p>We strongly recommend that you configure and build BLCR in a directory
+other than the one containing the BLCR source code (use of some options
+to <tt>configure</tt> actually require this).  In the example above the
+build is conducted in a subdirectory, named '<tt>builddir</tt>', of the
+source directory.  Any writable location is fine, but you will
+need to invoke <tt>configure</tt> by the correct path in place of
+'<tt>../configure</tt>' used in the example.
+<p>If you run into issues building BLCR on your system, check the
+<a href="#platform">Platform-specific notes</a>
+section of this document and the <a href="FAQ.html">FAQ</a>.
+<h4> Choosing an installation directory </h4>
+By default BLCR will install into <tt>/usr/local</tt>. To choose a
+different
+directory tree to install into, pass the '<tt>--prefix</tt>' flag to
+<tt>configure</tt>:
+<ul>
+  <li> <strong>--prefix</strong>=[the directory you wish to install
+into] </li>
+</ul>
+However, be aware that using a location other than <code>/usr/local</code>
+or <code>/usr</code> may require additions to
+the <code>PATH</code>, <code>MANPATH</code> and <code>LD_LIBRARY_PATH</code>
+environment variables of users (more details below).<br>
+<h4>Building against a kernel other than the one that's running</h4>
+<p>By default, BLCR builds against the kernel that is running on the
+system at configure time, and looks in a number of standard locations
+for the required files that correspond to it.
+However, if you're building for a kernel <em>other</em> than the
+kernel that is running at the time of the build, then
+you'll need to pass <tt>configure</tt> <b>one</b> of the following two options:
+<ul>
+  <li> <strong>--with-linux</strong>=[kernel version such as 2.6.24.3-34.fc8-i686]</li>
+  <li> <strong>--with-linux</strong>=[full path to the kernel build directory]</li>
+</ul>
+If no <strong>--with-linux</strong> is passed, the default is equivalent to
+<strong>--with-linux</strong>=<tt>`uname -r`</tt>.
+<h4>Building with files in locations unknown to BLCR</h4>
+<p>In most standard installations, either the default settings or a
+manual <strong>--with-linux</strong> option should be enough to
+find all the required files.  However, in some cases <tt>configure</tt> will
+need additional help.  For instance, if the sources are not in a well known
+directory, the <strong>--with-linux-src</strong>=[full path] option can be
+used to tell configure where they are.  Similarly, BLCR needs either
+the <tt>System.map</tt> or <tt>vmlinux</tt> files.  So if neither are found
+in well known locations, you'll need to pass <tt>configure</tt> <b>one</b> of
+the following two options:
+<ul>
+  <li> <strong>--with-system-map</strong>=[full path to the System.map file]</li>
+  <li> <strong>--with-vmlinux</strong>=[full path to the kernel executable]</li>
+</ul>
+Note that the <tt>vmlinuz</tt> file (note the final character 'z') cannot
+be used as a replacement for <tt>System.map</tt> or <tt>vmlinux</tt>.
+<h4>Separate compilers for user-space and kernel</h4>
+<p>Historically, the Linux kernel sources have not always been kept current
+as gcc versions have advanced.  As a result, there have been Linux distributions
+that have shipped two gcc versions: a current one for user-space code and
+an older one for compiling the kernel and kernel modules.
+There are also distributions that have a 64-bit kernel, but build (nearly)
+all of user-space as 32-bit.  In that case, there might be a single gcc
+version installed with a default of building 32-bit objects, which therefore
+won't work as-is to compile the kernel modules.
+<p>In either of these cases it may be required to have BLCR build its user-space
+and kernel module portions with different compilers (or the same compiler
+with different flags).  Just as most other configure-based packages, BLCR
+can be configured to use a specific C compiler by setting the "CC" variable
+at configure time.  In addition, BLCR's configure honors a "KCC" variable
+to specify the C compiler to use for the kernel modules.
+For our first motivating example (a distribution with a distinct "kgcc"),
+you could use the following:
+<pre>    % configure [ options ] KCC=kgcc<br></pre>
+For our second motivating example (64-bit kernel with 32-bit user-space
+and gcc defaulting to 32-bit objects), you could use the following:
+<pre>    % configure [ options ] KCC='gcc -m64'<br></pre>
+<p>If not set explicitly, KCC defaults to the value configure finds
+for CC.
+<h4>Building 32-bit application support on a 64-bit platform</h4>
+<p>BLCR's build logic is capable of building both 64-bit and 32-bit
+libraries at the same time on most 64-bit platforms it supports.&nbsp;
+However, because this feature does not work well with
+certain setups, it is disabled by default.&nbsp; To enable it you'll
+want to pass configure the following option:<br>
+<ul>
+  <li><strong>--enable-multilib</strong></li>
+</ul>
+This option assumes "CC" generates 64-bit objects, and may instruct you
+to try again with the addition of an option like <tt>CC='gcc -m64'</tt>
+if that is not the case.
+<p>If configuration fails with this option specified, you can still
+configure without it to get only 64-bit application support.
+<p>BLCR does not currently support any mechanism to build
+32-bit utilities and 64-bit libraries at the same time.  If you want
+64-bit libraries, you currently have to settle for 64-bit utilities
+as well.
+<h4>Building static libraries (optional)</h4>
+<p>By default, BLCR does not build static versions of its libraries.  If
+you want/need static libraries, you may enable the with:<br>
+<ul>
+  <li><strong>--enable-static</strong></li>
+</ul>
+However, do not pass <strong>--disable-shared</strong> unless you
+are certain you know what you are doing.  Without the dynamic shared
+libraries, the <tt>cr_run</tt> utility will not function.
+<h4>Building static executables (discouraged)</h4>
+<p>BLCR's utilities (<tt>cr_run</tt>, <tt>cr_checkpoint</tt> and
+<tt>cr_restart</tt>) are normally build with the default linker flags.
+This will, for most installations, result in dynamically linked
+executables.  You may force BLCR to build statically linked utilities
+by passing <tt>configure</tt> the following two options:
+<ul>
+  <li><strong>--enable-static --enable-all-static</strong></li>
+</ul>
+You might also get statically linked BLCR utilities by default if your
+system has no dynamic libraries installed.
+<p>If you configure with <strong>--enable-all-static</strong> (or
+have no dynamic libraries on your system), you should be aware that
+you may unknowingly be linking in the LinuxThreads implementation of
+pthreads, <strong>which BLCR does not support</strong>.  This happens
+because currently many Linux distributions install the LinuxThreads
+static libraries in the default library search path, and the
+BLCR-supported NPTL libraries are installed elsewhere.  If this
+happens to you, then configure
+will fail.  The solution
+is to provide the proper "CPPFLAGS" and "LDFLAGS" when you configure
+BLCR.  Appending something like the following to the <tt>configure</tt>
+command line may work:
+<ul>
+  <li><strong>CPPFLAGS='-I/usr/include/nptl' 
+	LDFLAGS='-L/usr/lib/nptl -L/usr/lib64/nptl'</strong></li>
+</ul>
+Though you could/should leave out one of the two "LDFLAGS" options
+if not performing a <tt>--enable-multilib</tt> build.
+<h4>Building an installable BLCR testsuite (optional)</h4>
+If you pass <tt>configure</tt> the following option:
+<ul>
+  <li><strong>--enable-testsuite</strong></li>
+</ul>
+then BLCR's tests will not only be built for testing via "<tt>make check</tt>",
+but will also be installed via "<tt>make install</tt>".  The testsuite
+is installed in <tt><i>PREFIX</i>/libexec/blcr-testsuite</tt>, and can be
+executed by running <tt>RUN_ME</tt> in that directory (once the environment
+variables are setup correctly).
+<h3>2.2 Compiling BLCR</h3>
+Just type 'make':
+<pre>    % make<br></pre>
+If you get errors, first check the FAQ and then contact us for help.
+<h3>2.3 Testing your build (optional, but recommended)</h3>
+As with many autotools-based packages, BLCR includes a '<code>check</code>'
+make target.&nbsp; However, it cannot run the tests until the kernel
+modules are loaded (and will tell you so if you forget).&nbsp; Since
+the not-yet-installed kernel modules are located throughout the BLCR
+build
+directory, an '<code>insmod</code>' make target is provided to automate
+this task.&nbsp; If
+you are not running as root, "<code>make insmod</code>" will try to use
+the '<code>sudo</code>' utility to perform the insmod operations as
+root.&nbsp; However, it is not necessary (or recommended) to run the
+tests themselves as
+root.&nbsp; So, we recommend run the following as a non-root user if '<code>sudo</code>'
+is installed and configured to allow your user:<br>
+<pre>    % make insmod check<br></pre>
+Which may prompt for a password, depending on how '<code>sudo</code>'
+is configured.&nbsp; If the 'sudo' utility is not installed (or not
+configured for your user), the following steps are equivalent:<pre>
+    % su
+    Password:[type root password here]
+    # make insmod
+    # exit
+    % make check
+</pre>
+If the modules fail to load, then your kernel may not be supported and
+you'll need to report this as a bug to the BLCR team, after first
+checking the bug database to ensure the problem isn't already known (or
+even fixed).&nbsp; Similarly, if one or more tests fail, we'll want to
+know that too.&nbsp; However, if the only failures are one or two tests
+that say "restart/timeout" then you should first try increasing the
+timeout as follows (assuming the kernel modules have already been
+loaded):<br>
+<pre>    % make check CRUT_TIMEOUT=120<br></pre>
+The '<code>CRUT_TIMEOUT</code>' is a value in seconds, with a default
+of 60&nbsp; (CRUT is an acronym for Checkpoint/Restart Unit Test).<br>
+<p>
+Tests marked 'SKIP' are neither a 'PASS', nor a 'FAIL' - instead they
+indicate a test that was not actually run.
+So don't be alarmed if you see one or more tests marked 'SKIP'.
+This happens when a given test is not applicable to your system (for
+instance the <tt>hugetlbfs</tt> test is skipped when no writable mountpoint
+for hugetlbfs is found).
+<p>Note that BLCR's testsuite intentionally tries to do "bad" things
+and many lines of output are expected in the system logs as a result.
+Do not be alarmed by them, but be prepared to provide them with any
+failures you report to us.
+<p><strong>We do not advise continuing to
+install BLCR if any tests 'FAIL'</strong> (other than timeouts correctable
+by raising <code>CRUT_TIMEOUT</code> sufficiently).</p>
+<h3>2.4 Installing BLCR</h3>
+<p>Use the standard '<tt>install</tt>' make target to install the BLCR
+utilities
+and libraries, and to place the kernel modules in the standard location
+for your
+kernel:
+<pre>    % make install<br></pre>
+or, if you prefer stripped binaries:
+<pre>    % make install-strip<br></pre>
+<h3>2.5 Loading the Kernel Modules</h3>
+Before you can checkpoint/restart applications, the kernel modules need
+to be
+loaded into your kernel. The kernel modules are placed into a
+subdirectory of the <tt>lib/blcr</tt>
+(or <code>lib64/blcr</code>) branch of the installation directory. In
+this example, we'll assume the
+installation
+prefix was the default <tt>/usr/local</tt> and that your kernel is
+version <tt>2.6.12-1.234</tt> for an x86.
+Thus, for this example the kernel modules are in the directory
+<tt>/usr/local/lib/blcr/2.6.12-1.234/</tt>. There are two kernel
+modules
+in
+this directory which must be loaded (in the correct order) for
+BLCR to function.
+<p>As <tt>root</tt>, load the kernel modules in this order:
+</p><pre>
+    # /sbin/insmod /usr/local/lib/blcr/2.6.12-1.234/blcr_imports.ko
+    # /sbin/insmod /usr/local/lib/blcr/2.6.12-1.234/blcr.ko
+</pre>
+<p> You may wish to set up your system to load these modules by default
+at boot
+time. The exact mechanism for doing so differs between Linux
+distributions, and
+thus requires an experienced system administrator. However, a template
+init
+script is provided as <tt>etc/blcr.rc</tt> in the BLCR source
+directory.
+</p>
+<h3>2.6 Updating ld.so.cache</h3>
+Nearly all Linux distributions use a caching mechanism for resolving dynamic library
+dependencies.  If you have installed BLCR's shared library in a directory that is
+cached by the mechanism, then you will need to update this cache.  To do so,
+run the <tt>ldconfig</tt> command as <tt>root</tt>; no command-line arguments are needed.
+<p>
+It should always be safe to run the <tt>ldconfig</tt> command, even if BLCR did not
+install its library in a directory managed in the cache.  However, if you wish to
+avoid this step when unnecessary, you can know that BLCR's shared library is in a
+cached directory if you configured with <tt>--prefix=</tt>
+or <tt>--libdir=</tt> options that cause BLCR's shared library (<tt>libcr.so</tt>) to be
+installed in:
+<ul>
+  <li><tt>/lib</tt> or <tt>/usr/lib</tt>
+  <li>any directory listed in <tt>/etc/ld.so.conf</tt>
+  <li>any directory listed in a file under <tt>/etc/ld.so.conf.d/</tt>
+</ul>
+Note that if you passed no <tt>--prefix=</tt> or <tt>--libdir=</tt> options to
+BLCR's configure script, then you should check <tt>/etc/ld.so.conf</tt>
+and <tt>/etc/ld.so.conf.d/</tt> for <tt>/usr/local/lib</tt> (the default location)
+to determine if you actually need to run the <tt>ldconfig</tt> command.
+<h3>2.7 Configuring Users' environments</h3>
+Finally, you may wish to add the appropriate BLCR directories to the
+default
+<tt>PATH</tt>, <tt>LD_LIBRARY_PATH</tt>, and <tt>MANPATH</tt>
+environment variables for your users.
+You may either modify the <tt>/etc/profile</tt> and/or <tt>/etc/cshrc</tt>
+files, or add new files in the <tt>/etc/profile.d</tt> directory.
+Alternatively,
+you may provide <a href="http://modules.sourceforge.net/">modules</a>
+that
+accomplish the same thing. You should replace <i>PREFIX</i> by the
+installation
+prefix (such as <tt>/usr/local</tt>) in the following examples:
+<p>For Bourne-style shells:</p><pre>
+    $ PATH=$PATH:<i>PREFIX</i>/bin
+    $ MANPATH=$MANPATH:<i>PREFIX</i>/man
+    $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<i>PREFIX</i>/lib:<i>PREFIX</i>/lib64
+    $ export PATH MANPATH LD_LIBRARY_PATH
+</pre>
+<p>For csh-style shells:</p><pre>
+    % setenv PATH ${PATH}:<i>PREFIX</i>/bin
+    % setenv MANPATH ${MANPATH}:<i>PREFIX</i>/man
+    % setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:<i>PREFIX</i>/lib:<i>PREFIX</i>/lib64
+</pre>
+<p>These example assume a "multilib" system with both <tt>/lib</tt> and <tt>/lib64</tt>
+directories.  If your system lacks one of these two directories, the corresponding
+colon-separated entry may be omitted from the value of LD_LIBRARY_PATH.</p>
+<p>
+It is worth noting that if the BLCR libraries are installed in a directory
+named in <tt>/etc/ld.so.conf</tt> or <tt>/etc/ld.so.conf.d/</tt>, then you
+do not need to add it to <tt>LD_LIBRARY_PATH</tt>.  Similarly, you may
+find it unnecessary to add to <tt>PATH</tt> and/or <tt>MANPATH</tt> if BLCR
+has been installed in a location that is already searched.
+</p>
+<h3>2.8 Uninstalling BLCR</h3>
+If you preserve the BLCR build tree, then there is a standard '<code>uninstall</code>'
+make target available to remove the files copied by the '<code>install</code>'
+target.<br>
+<h2>3. Making RPMs from the BLCR sources</h2>
+An alternate way to install BLCR is to build a binary RPM for your
+system, which
+you can then install. This has certain advantages (such as making
+upgrading
+easier, especially if you maintain BLCR on multiple systems).
+<h3>3.1 Building binary RPMs from the source tarball</h3>
+Once you've configured BLCR with any options your system requires, the
+simplest method for building RPMs is to just
+<pre>    % make rpms<br></pre>
+If successful, the new RPM packages will be in the
+<tt>rpm/RPMS</tt> subdirectory of the build tree. The resulting
+packages will be
+for whatever kernel you configured for.
+<h3>3.2 Building a binary RPM from source RPMS</h3>
+You may also with start from a source RPM (with a <tt>.src.rpm</tt>
+suffix)
+rather than the <tt>.tar.gz</tt> version of the BLCR distribution.
+Source RPMs are
+available on our <a href="http://ftg.lbl.gov/checkpoint" target="_top">website</a>.
+These source RPMs are configured to build for the <em>running</em>
+kernel, with <code>--prefix=/usr</code> and to configure with <code>--enable-multilib</code> on 64-bit
+platforms.
+Alternatively, the <tt>'make rpms'</tt> step above will create a
+source
+RPM
+in the <tt>rpm/SRPMS</tt> subdirectory of the build tree, valid for
+the
+<em>configured</em> kernel.
+<p>If building as <tt>root</tt>, built RPMs will be placed in a
+subdirectory of
+<tt>/usr/src/redhat/RPMS</tt>. However, if you are not <tt>root</tt>,
+you may
+need to see
+<a href="http://www.ibm.com/developerworks/library/l-rpm2/">this page
+at IBM</a>
+for information on configuring an output location before
+proceeding.&nbsp; Personally, we prefer
+<b>not</b> to build as root.
+<p>To build binary RPMs from the source RPM, use
+<pre>    % rpmbuild --rebuild blcr-X.Y.Z-N.src.rpm --target ARCH<br></pre>
+replacing <tt>blcr-X.Y.Z-N.src.rpm</tt> with the correct filename,
+and <tt>ARCH</tt> with a specific target CPU. If you don't know
+your target, try "<tt>uname -p</tt>" to determine it.
+If you don't specify a <tt>--target</tt>, the default will depend on
+the
+version of rpmbuild and may be i386 (which will be rejected).
+See the documentation for <tt>rpmbuild</tt> for more information on
+building
+binary RPMs from source RPMs.
+<p>If you are on a 64-bit platform and do not wish to build the 32-bit
+libraries (or lack the required toolchain), then you can disable
+the default <code>--enable-multilib</code> behavior of the source RPM
+by adding <tt>--define 'with_multilib 0'</tt> to the <tt>rpmbuild</tt>
+command line.
+<p>The RPMs should build without error. However, if not building for
+the running
+kernel, you may see a warning about this. You will see the location of
+the binary
+RPMs in the last few lines of output from <tt>rpmbuild</tt> - 
+something like this:
+</p><pre>
+    Wrote: /usr/src/redhat/RPMS/i686/blcr-0.8.6_b4-1.i686.rpm
+    Wrote: /usr/src/redhat/RPMS/i686/blcr-libs-0.8.6_b4-1.i686.rpm
+    Wrote: /usr/src/redhat/RPMS/i686/blcr-devel-0.8.6_b4-1.i686.rpm
+    Wrote: /usr/src/redhat/RPMS/i686/blcr-modules_2.6.12_1.234-0.8.6_b4-1.i686.rpm
+    Wrote: /usr/src/redhat/RPMS/i686/blcr-testsuite-0.8.6_b4-1.i686.rpm
+</pre>
+You should note that the kernel version <tt>2.6.12-1.234</tt> has
+become
+<tt>2.6.12_1.234</tt> in the name of the <tt>blcr-modules</tt> package
+(a change of a hyphen to an underscore).
+<p> In most cases, you will want to install the <tt>blcr</tt>, <tt>blcr-libs</tt>
+and <tt>blcr-modules</tt> binary RPMS.  The <tt>blcr-devel</tt> is only required on
+machines on which you will compiling/linking source code against BLCR's libraries.  So,
+for a cluster you may want to install <tt>blcr-devel</tt> only on the front-end node(s).
+<p> The <tt>blcr-testsuite</tt> RPM is optional.  You may install and run the testsuite
+(<tt>/usr/libexec/blcr-testsuite/RUN_ME</tt>) if you wish to verify correct
+operation of BLCR.  You may be asked to do this if you report bugs to us.
+<h2><a name="platform">4. Platform-specific notes</h2>
+<ul>
+  <li>PowerPC (32- and 64-bit)<br>
+    <ul>
+    <li> There is a known problem with signal handling in some PowerPC kernel versions
+         2.6.15 and older that can cause restart failures with BLCR.  Therefore,
+         for effected kernels one must configure with '<tt>--with-bug2524</tt>' to
+         enable a work-around in BLCR (with a very small performance penalty).<br>
+         If you are configuring for a kernel 2.6.15 or older on a PowerPC, BLCR's
+         configure script will require either '<tt>--with-bug2524</tt>' or
+         '<tt>--without-bug2524</tt>'.  If you are uncertain, configure using
+         '<tt>--with-bug2524</tt>', which is always safe.  If you make an incorrect
+         choice at configure time, then when you run '<tt>make check</tt>' the
+         test '<tt>bug2524</tt>' will let you know.<br></li>
+    </ul>
+  </li>
+  <li>ARM<br>
+    <ul>
+    <li> Kernel versions 2.6.11 and older lack true atomic compare-and-swap
+         support, which BLCR require.  Therefore, one must
+         use a 2.6.12 kernel or later on ARM plarforms.</li>
+    </ul>
+  </li>
+</ul>
+<h2>5. For more information</h2>
+<p>For more information on Berkeley Lab Checkpoint/Restart for Linux,
+visit the
+project home
+page: <a href="http://ftg.lbl.gov/checkpoint" target="_top">http://ftg.lbl.gov/checkpoint</a><br>
+To report bugs (or look for bug fixes prior to reporting new ones),
+visit <a href="http://mantis.lbl.gov/bugzilla">http://mantis.lbl.gov/bugzilla</a></p>
+</body>
+</html>

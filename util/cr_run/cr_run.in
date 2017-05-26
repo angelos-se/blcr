@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# Default preload is the "run" library
+_libname=libcr_run
+
+# Process args
+while [ $# -ne 0 ]; do
+  case "$1" in
+    --help|-\?)
+      echo "$0: program [args...]"
+      echo 'Options:'
+      echo ' -?, --help         print this help message.'
+      echo '     --version      print version information.'
+      echo '     --             ends options procesing.'
+      echo '     --omit         exclude process(es) from checkpoints.'
+      echo '     --run          negates --omit (this is the default).'
+      exit 0
+      ;;
+    --version)
+      echo `basename $0`": version @release_version@"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    --omit)
+      _libname=libcr_omit
+      shift
+      ;;
+    --run)
+      _libname=libcr_run
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+_new=${_libname}.so.@libcr_major@
+###do_not_install#### lines below are a "trick" to allow use from the build directory
+LD_LIBRARY_PATH=@top_builddir@/libcr/.libs:@top_builddir@/libcr32/libcr/.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} ###do_not_install###
+_new=${_libname}.so ###do_not_install###
+export LD_LIBRARY_PATH ###do_not_install###
+case "$LD_PRELOAD" in
+  ''|:) LD_PRELOAD="${_new}" ;;
+  *) # Append LD_PRELOAD to _new, filtering out any existing libcr_{omit,run} (and empty elements)
+    saveIFS="$IFS"
+    IFS=:
+    for x in $LD_PRELOAD; do
+      if test -n "$x"; then
+        case "$(basename $x)" in
+          libcr_omit.so*) ;;
+          libcr_run.so*) ;;
+          *) _new="${_new}:${x}";;
+        esac
+      fi
+    done
+    IFS="$saveIFS"
+    ;;
+esac
+LD_PRELOAD="${_new}"
+export LD_PRELOAD
+exec "$@"

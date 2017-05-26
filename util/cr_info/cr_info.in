@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if [ $# -eq 1 ]; then
+  case "$1" in
+    --help|-\?)
+      echo "$0: program [args...]"
+      echo 'Options:'
+      echo ' -?, --help         print this help message.'
+      echo '     --version      print version information.'
+      exit 0
+      ;;
+    --version)
+      echo `basename $0`": version @release_version@"
+      exit 0
+      ;;
+  esac
+fi
+
+TEMP=`mktemp /tmp/cr_info.XXXXXXXX` || exit 1
+trap "rm -f $TEMP; exit 0" 0 1 2 15
+perl -0777 -p -e 's/^.*?VMA/VMA/' -- $1 >$TEMP
+BINDIR=@libexecdir@
+###do_not_install#### following line is to allow use from the build directory
+BINDIR=@vmadump_dir@ ###do_not_install###
+exec ${BINDIR}/vmadcheck $TEMP

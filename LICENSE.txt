@@ -1,0 +1,18 @@
+Berkeley Lab Checkpoint/Restart (BLCR) for Linux is Copyright (c)
+2014, The Regents of the University of California, through Lawrence
+Berkeley National Laboratory (subject to receipt of any required
+approvals from the U.S. Dept. of Energy).  All rights reserved.
+
+Portions may be copyrighted by others, as may be noted in specific
+copyright notices within specific files.
+
+
+Use is permitted under the terms of either the GPL or LGPL as
+specified in the license.txt file contained each directory.
+Specifically, the library libcr and its associated source and header
+files are covered by the LGPL, while all remaining files are covered
+by the GPL.
+
+You will find copies of the GPL and LGPL licenses in the files COPYING
+and COPYING.LIB, respectively.
+

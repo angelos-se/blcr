@@ -1,0 +1,95 @@
+$Id: README.devel,v 1.2 2008/06/04 22:09:22 phargrov Exp $
+
+This file contains information targeted at people wishing to develop
+code either IN or USING BLCR.  Right now this file is a
+work-in-progress and lacks many useful items and is unorganized.
+
+
+* Autotools
+
+If you get these files from CVS (as opposed to a tarball or other
+package) or if you wish to make modifications to the build system
+(such as to configure.ac or any Makefile.am) then you will need the
+following tools installed:
+	GNU autoconf	2.54 or newer if using automake-1.7
+	GNU automake	1.7 or newer
+	GNU libtool	1.4 or newer
+NOTE: this list is not always kept up-to-date.
+
+If you have a CVS checkout, then your source tree has not been
+"bootstrapped".  You should run "./autogen.sh" to setup the build
+environment.  You can then proceed with "configure" and "make".
+
+You must take care if you later do a "cvs update" which changes any of
+the following files in any directory:
+	configure.ac
+	Makefile.am
+	*.m4
+If a cvs update does change any of these then a "make distclean" and a
+fresh "configure" are recommended to ensure all changes have their
+intended effects.
+
+
+* Certificate of Origin
+
+All mail contributions intended for redistribution as part of BLCR
+should include a "Developer's Certificate of Origin" to remove any
+question as to the rights to redistribute your contribution.  The term
+"contribution" here mostly is intended to cover patches to BLCR, but
+anything that could end up in a BLCR tarball is a contribution,
+including for instance text for use in the FAQ.
+
+The description of the Developer's Certificate of Origin below is a
+direct quote from linux-2.6.22/Documentation/SubmittingPatches.
+Please read and understand it before sending us any contributions.  If
+you cannot be certain that your work meets these requirements, we
+rather not see your work at all until we can discuss it with you.  So,
+please contact us if you have questions.
+
+--- begin quote ---
+To improve tracking of who did what, especially with patches that can
+percolate to their final resting place in the kernel through several
+layers of maintainers, we've introduced a "sign-off" procedure on
+patches that are being emailed around.
+
+The sign-off is a simple line at the end of the explanation for the
+patch, which certifies that you wrote it or otherwise have the right to
+pass it on as a open-source patch.  The rules are pretty simple: if you
+can certify the below:
+
+        Developer's Certificate of Origin 1.1
+
+        By making a contribution to this project, I certify that:
+
+        (a) The contribution was created in whole or in part by me and I
+            have the right to submit it under the open source license
+            indicated in the file; or
+
+        (b) The contribution is based upon previous work that, to the best
+            of my knowledge, is covered under an appropriate open source
+            license and I have the right under that license to submit that
+            work with modifications, whether created in whole or in part
+            by me, under the same open source license (unless I am
+            permitted to submit under a different license), as indicated
+            in the file; or
+
+        (c) The contribution was provided directly to me by some other
+            person who certified (a), (b) or (c) and I have not modified
+            it.
+
+	(d) I understand and agree that this project and the contribution
+	    are public and that a record of the contribution (including all
+	    personal information I submit with it, including my sign-off) is
+	    maintained indefinitely and may be redistributed consistent with
+	    this project or the open source license(s) involved.
+
+then you just add a line saying
+
+	Signed-off-by: Random J Developer <random@developer.example.org>
+
+using your real name (sorry, no pseudonyms or anonymous contributions.)
+
+Some people also put extra tags at the end.  They'll just be ignored for
+now, but you can do this to mark internal company procedures or just
+point out some special detail about the sign-off. 
+--- end quote ---

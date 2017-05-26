@@ -1,0 +1,46 @@
+# Common setup code to be sourced by shell scripts
+# Initializes:
+#  cr_testsdir	  location of the tests
+#  cr_libpath	  text to optionally prepend to LD_LIBRARY_PATH
+#  cr_run	  path of the cr_run utility
+#  cr_checkpoint  path of the cr_checkpoint utility
+#  cr_restart	  path of the cr_restart utility
+#  cr_pwd	  PWD_PROG found by configure, or "pwd"
+for cr_testsdir in ${cr_testsdir} `dirname $0` .; do
+  test -f ${cr_testsdir}/shellinit && break
+done
+test -f ${cr_testsdir}/shellinit || exit 1
+export cr_testsdir
+#
+cr_bindir=${cr_testsdir}/../bin
+if expr "$cr_bindir" : / >/dev/null; then
+  : # OK
+else
+  cr_bindir="`pwd`/${cr_bindir}"
+fi
+#
+@CR_INSTALLED_LIBCR_TRUE@cr_libpath=
+@CR_INSTALLED_LIBCR_FALSE@cr_libpath=@TOP_BUILDDIR@/libcr/.libs:
+export cr_libpath
+#
+@CR_ENABLE_SHARED_TRUE@cr_run=${cr_run:-${cr_bindir}/cr_run}
+@CR_ENABLE_SHARED_FALSE@cr_run=env
+export cr_run
+# cr_run which additionally attempts to force line buffered stdout.
+# This is needed for some SEQ tests.
+cr_run_lb="$cr_run"
+if (stdbuf -oL true >/dev/null 2>&1); then cr_run_lb="$cr_run stdbuf -oL"; fi
+#
+cr_checkpoint=${cr_checkpoint:-${cr_bindir}/cr_checkpoint}
+export cr_checkpoint
+#
+cr_restart=${cr_restart:-${cr_bindir}/cr_restart}
+export cr_restart
+#
+cr_pwd="@PWD_PROG@"
+if test ! -x "$cr_pwd" -o "`$cr_pwd 2>&1 > /dev/null`" != "" ; then
+  cr_pwd=pwd
+fi
+export cr_pwd
+#
+unset cr_bindir

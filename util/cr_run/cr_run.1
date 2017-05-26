@@ -1,0 +1,76 @@
+.\" Hand-rolled...
+.TH CR_RUN "1" "May 2008" "Berkeley Lab Checkpoint/Restart" "User Commands"
+.SH NAME
+cr_run \- runs a subprocess with checkpoint library loaded.
+.SH SYNOPSIS
+.B cr_run
+.I [OPTIONS] COMMAND [ARGS]
+
+.SH DESCRIPTION
+.B cr_run
+takes an arbitrary command and runs it with the "LD_PRELOAD"
+environment variable set so that an appropriate shared
+library is loaded at program startup.  Such a library must be loaded if you wish
+to take a checkpoint of the process with
+.BR cr_checkpoint (1).  
+
+.B cr_run
+assumes that BLCR's libraries
+.RI ( libcr*.so )
+can be found in the default library search path
+or via the "LD_LIBRARY_PATH" environment variable.
+
+You do not need to use
+.B cr_run
+if you explicitly link your application with 
+.I -lcr 
+(you may also need to modify your linker's search path with a 
+.I -L 
+directive, depending on the library's location), or if
+.I libcr.so 
+or a related library
+is loaded by other libraries you have linked with (such as a checkpoint-ready
+MPI library), or by your system's parallel job startup script, etc.  Check your
+system documentation for details.
+
+.SH OPTIONS
+
+.TP
+.BR -? , --help
+print a usage message and exit.
+.TP
+.B --version
+print version information and exit.
+.TP
+.B --
+ends options processing.
+.TP
+.B --omit
+causes executed process(es) to be omitted (rather than included) in any checkpoint taken.
+.TP
+.B --run
+overrides any occurance of
+.B --omit
+earlier in the options (restoring the default behavior).
+
+.SH BUGS
+Because
+.B cr_run
+relies on the "LD_PRELOAD" environment variable,
+it is ineffective for statically-linked executables, and for setuid/gid
+programs.
+
+.SH AUTHORS
+
+Jason Duell, Paul Hargrove, and Eric Roman, Lawrence Berkeley National
+Laboratory.
+
+.SH "REPORTING BUGS"
+
+Bug reports may be filed on the web at 
+.BR http://mantis.lbl.gov/bugzilla .
+
+.SH "SEE ALSO"
+
+.BR cr_checkpoint (1), 
+.BR cr_restart (1), 

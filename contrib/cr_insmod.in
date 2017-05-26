@@ -1,0 +1,6 @@
+#!/bin/sh
+# @configure_input@
+#
+# Reloads checkpoint/restart kernel modules
+
+make -C @TOP_BUILDDIR@ insmod

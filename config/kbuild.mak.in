@@ -1,0 +1,99 @@
+# Here are the configuration bits needed in the "caller" to use this file
+#SUBDIR = vmadump4
+#TARGET = vmadump
+#SOURCES = vmadump_common.c vmadump_@CR_KARCH@.c optional.h
+#[optional]EXTRA_CFLAGS = -I$(top_builddir)/include -I$(top_builddir) -I$(srcdir)
+#[optional]IMPORTS_FROM = /some/other/kbuild/module/dir /and/another
+#
+# Note: we support only 2.6.x kernels
+
+# Here is the automake-like stuff
+SHELL := @SHELL@
+INSTALL_data := @INSTALL@ -c -m 644
+top_srcdir := @TOP_SRCDIR@
+top_builddir := @TOP_BUILDDIR@
+prefix := @prefix@
+exec_prefix := ${prefix}
+installdir := $(DESTDIR)@CR_MODULE_DIR@
+LINUX := @LINUX_SRC@
+LINUX_OBJ := @LINUX_OBJ@
+srcdir := $(top_srcdir)/$(SUBDIR)
+builddir := $(top_builddir)/$(SUBDIR)/kbuild
+mkinstalldirs := $(SHELL) $(top_srcdir)/config/install-sh -d
+CLEAN_FILES := *.o *.ko *.ko.unsigned *.mod.c .*.cmd .tmp_versions *.symvers modules.order Module.markers
+TARGET_SUFFIX := .ko
+
+# Remove headers from the list of sources, and sort to remove possible duplicates
+DOT_C := $(sort $(filter %.c,$(SOURCES)))
+
+ifeq ($(srctree),)
+# not within KBUILD - implement automake's standard goals
+
+all: $(LINUX_OBJ)/.config prepare
+	$(MAKE) -C $(LINUX) @KBUILD_MAKE_ARGS@ CC="@KCC@"
+clean:
+	[ -z "$(CLEAN_FILES)" ] || rm -Rf $(CLEAN_FILES)
+distclean: clean
+	rm -f Makefile $(patsubst $(TARGET).c,$(TARGET)_.c,$(notdir $(DOT_C)))
+install: all install-exec
+	@: # Empty
+install-exec:
+	-$(mkinstalldirs) $(installdir)
+	$(INSTALL_data) $(TARGET)$(TARGET_SUFFIX) $(installdir)/$(TARGET)$(TARGET_SUFFIX)
+uninstall:
+	[ -z "$(TARGET)$(TARGET_SUFFIX)" ] || rm -f $(installdir)/$(TARGET)$(TARGET_SUFFIX)
+distdir:
+	@: # automake-1.9 copies Makefile.in, but eariler do not
+	test -f $(distdir)/Makefile.in || cp $(srcdir)/kbuild/Makefile.in $(distdir)/
+
+configfiles := Makefile $(top_builddir)/config/kbuild.mak
+AM_TARGETS := all clean distclean install uninstall distdir install-exec
+EMPTY_AM_TARGETS := dvi check installcheck install-data
+.PHONY : prepare $(AM_TARGETS) $(EMPTY_AM_TARGETS)
+$(AM_TARGETS) $(EMPTY_AM_TARGETS) : $(configfiles)
+$(EMPTY_AM_TARGETS):
+	@: # Empty
+prepare:
+	@: # Use symlinks in place of VPATH
+	@: # 1) VPATH doesn't work w/ kbuild in Linux 2.6
+	@: # 2) we may have generated files in .. (such as cr_imports.c)
+	@: # 3) we can get around having a SOURCE and TARGET w/ the same basename
+	@cd $(builddir); \
+	 for file in $(DOT_C); do \
+	  dest=`basename $$file`; \
+	  case $$dest in $(TARGET).c) dest=$(TARGET)_.c;; esac; \
+	  if expr $$file : / >/dev/null; then \
+	   ln -sf $$file $$dest; \
+	  elif [ -f ../$$file ]; then \
+	   ln -sf ../$$file $$dest; \
+	  else \
+	   ln -sf $(srcdir)/$$file $$dest; \
+	  fi ; \
+	done
+	@: # Setup to help MODPOST find the symbols we import from other modules
+	@: # .tmp_versions - for kernels 2.6.0 through 2.6.16
+	@: # Modules.symvers - for 2.6.17
+	@: # Module.symvers - for 2.6.18 and up
+	@mkdir -p $(builddir)/.tmp_versions
+	@rm -f $(builddir)/Module.symvers $(builddir)/Modules.symvers
+	@cd $(builddir); \
+	 for dir in $(IMPORTS_FROM); do \
+	  [ -d "$$dir/.tmp_versions"   ] && ln -sf $$dir/.tmp_versions/*.mod .tmp_versions/; \
+	  [ -e "$$dir/Modules.symvers" ] && cat $$dir/Modules.symvers >> Modules.symvers; \
+	  [ -e "$$dir/Module.symvers"  ] && cat $$dir/Module.symvers >> Module.symvers; \
+	 done; \
+	 true # Ignore failures
+Makefile:  $(srcdir)/kbuild/Makefile.in  $(top_builddir)/config.status
+	cd $(top_builddir) && $(SHELL) ./config.status $(SUBDIR)/kbuild/$@
+$(top_builddir)/config/kbuild.mak: $(top_srcdir)/config/kbuild.mak.in $(top_builddir)/config.status
+	cd $(top_builddir) && $(SHELL) ./config.status config/kbuild.mak
+else
+# If within KBUILD - configure it
+
+# Strip possible relative path, rename if conflict w/ target, change .c to .o
+OBJECTS := $(patsubst %.c,%.o,$(patsubst $(TARGET).c,$(TARGET)_.c,$(notdir $(DOT_C))))
+
+obj-m := $(TARGET).o
+$(TARGET)-objs := $(OBJECTS)
+
+endif

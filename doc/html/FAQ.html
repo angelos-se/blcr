@@ -1,0 +1,834 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+    <title>BLCR Frequently Asked Questions (for version 0.8.6_b4)</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+</head>
+<body bgcolor="#ffffff">
+
+<h1>BLCR Frequently Asked Questions (for version 0.8.6_b4)</h1>
+
+
+<h3>General Questions</h3>
+<ul>
+    <li><a href="#whatisblcr">What is BLCR?</a>
+    <li><a href="#sigstop">How is checkpoint/restart different than SIGSTOP/SIGCONT?</a>
+    <li><a href="#condor">How is BLCR different than "user-level" checkpointing libraries like Condor, etc.?</a>
+    <li><a href="#platforms">What kinds of Linux systems does BLCR support?</a>
+    <li><a href="#distros">What Linux distributions does BLCR work with?</a>
+    <li><a href="#threads">Can BLCR checkpoint/restart multithreaded programs?</a>
+    <li><a href="#procs">Can BLCR checkpoint/restart multi-process applications?</a>
+    <li><a href="#limitations">Are there limits to the types of programs can BLCR checkpoint? </a>
+    <li><a href="#callbacks">What if I want to checkpoint a program that uses resources that BLCR can't checkpoint?</a>
+    <li><a href="#mpi">Does BLCR support checkpointing parallel/distributed applications?</a>
+    <li><a href="#rootbuild">Do I need root access in order to use BLCR?</a>
+    <li><a href="#batch">Is BLCR integrated with any batch systems? </a>
+    <li><a href="#porting">How hard is it to port BLCR to an architecture that isn't currently supported?</a>
+</ul>
+
+<h3>Build/Install Questions</h3>
+<ul>
+    <li><a href="#patch">Does BLCR require a kernel patch?</a>
+    <li><a href="#buildreqs">What do I need in order to build and use BLCR?</a>
+    <li><a href="#unconfig">What if I my kernel sources are unconfigured?</a>
+    <li><a href="#modvesion">How do I get past the error "linux/modversions.h:
+    No such file or directory"?</a>
+    <li><a href="#systemmap"> What if I get an error about my <tt>System.map</tt> file?</a>
+    <li><a href="#kcompiler"> Why do I get "Invalid module format" when loading BLCR's kernel modules?</a>
+</ul>
+
+<h3>Usage Questions</h3>
+<ul>
+    <li><a href="#samepid">Why do I get this error: "Restart failed:
+        Device or resource busy"?</a>
+    <li><a href="#sig31">Why does my application dies with "Real-time signal 31"
+        (or 32, etc.) when I try to checkpoint it?</a>
+    <li><a href="#prelink">Why can I restart jobs on the original machine they ran
+    on, but not a different node in my cluster?</a>
+    <li><a href="#enoent">Why do I get the error "Restart failed: No such file or directory"?</a>
+    <li><a href="#eperm">Why do I get the error "Restart failed: Permission denied"?</a>
+    <li><a href="#preload">Why do I get the error "ERROR: ld.so: object 'libcr_run.so.0' from LD_PRELOAD cannot be preloaded: ignored"?</a>
+    <li><a href="#nscd">Why do I get "vmadump: mmap failed: /var/db/nscd/[something]" in the system logs?</a>
+    <li><a href="#hsperfdata">Why do I get "vmadump: mmap failed: /tmp/hsperfdata_[user]/[pid]" in the system logs?</a>
+    <li><a href="#staticlink">Why can't I checkpoint my statically linked application?</a>
+    <li><a href="#auditing">Can I use Linux kernel auditing support with BLCR?</a>
+</ul>
+
+<h3>Additional Resources</h3>
+<ul>
+    <li><a href="#website">Where can I download BLCR?</a>
+    <li><a href="#website">Where can I find more information?</a>
+    <li><a href="#mailaddr">Is there a mailing list for BLCR?</a>
+    <li><a href="#bugzilla">Where can I report BLCR bugs?</a>
+</ul>
+
+<hr>
+<h3>General Questions</h3>
+
+<h4><a name="whatisblcr">What is BLCR?</a></h4>
+<blockquote>
+    BLCR (Berkeley Lab Checkpoint/Restart) allows programs running on Linux to
+    be "checkpointed" (written entirely to a file), and then later "restarted".
+    BLCR can be found
+    at <a href="http://ftg.lbl.gov/checkpoint">http://ftg.lbl.gov/checkpoint</a>.
+</blockquote>
+
+<h4><a name="sigstop">How is checkpoint/restart different than SIGSTOP/SIGCONT?</a></h4>
+<blockquote>
+      <p> Putting a process to sleep (via the SIGSTOP signal) implies stopping its
+      execution.  Taking a checkpoint writes a snapshot of a process to disk:
+      the process may either be allowed to continue running after the checkpoint is
+      complete, or you can kill the process to release all of its resources .
+
+      <p> With sleep, a process's resources are not all fully released (such as virtual
+      memory, network connections, process id, etc.).  Checkpointing then killing a
+      process fully releases all system resources.
+
+      <p> Restarts from checkpoint files can be used across machine reboots, and/or even
+      on different machines than the one that the checkpoint was taken on.  This is
+      not true for SIGCONT.
+</blockquote>
+
+<h4><a name="condor">How is BLCR different than "user-level" checkpointing libraries like Condor, etc.?</a></h4>
+<blockquote>
+    BLCR performs checkpointing and restarting inside the linux kernel.  While
+    this makes it less portable than solutions that use user-level libraries, it
+    also means that it has full access to all kernel resources, and can thus
+    restore resources (like process IDs) that user-level libraries cannot.
+    This also allows BLCR to checkpoint/restart groups of processes (such as
+    shell scripts and their subprocesses), together with the pipes that
+    connect them.
+</blockquote>
+
+<h4><a name="platforms">What kinds of Linux systems does BLCR support?</a></h4>
+<blockquote>
+    BLCR runs on x86 and x86_64 (Opteron/EM64T) systems running Linux 2.6.x
+    and 3.x.y kernels.
+    With the 0.8.6_b4 release, we believe the following to work:
+    <ul>
+      <li>2.6.0 through 3.17.x on x86 and x86_64.
+    </ul>
+    <p>BLCR 0.7.0 added experimental support for PPC (32-bit), and 0.6.0 added experimental
+       support for PPC64 and ARM.  These three architectures have been tested as follows:
+    <ul>
+      <li>2.6.14 and newer on PPC
+      <li>2.6.12 and newer on PPC64
+      <li>2.6.17 and newer on ARM
+    </ul>
+    We are interested to hear of your success or failure with these three experimental
+    architectures, especially on kernels older than those we have tested.
+    <p>Note that 0.6.x was the last release series to support 2.4.x kernels.
+</blockquote>
+
+<h4><a name="distros">What Linux distributions does BLCR work with?</a></h4>
+<blockquote>
+    <p> BLCR uses a set of configure-based tests to determine which kernel features
+    are available, and so in principle, BLCR should work with any 
+    distribution that uses a supported CPU/kernel combination
+    (see <a href="#platforms">above</a>).
+
+    <p> Historically, BLCR has been tested with kernels from numerous versions of SuSE,
+    RHEL (and clones such as CentOS and Scientific Linux), Fedora, Debian, Ubuntu,
+    and many vanilla Linux kernels (from kernel.org)
+    from 2.6.0 on up.  We have not tested every single version of the kernel from every
+    vendor, nor is each BLCR release retested against all distributions tested in the
+    past.  However, we believe that BLCR should work on most distributions using
+    kernels in the ranges given <a href="#platforms">above</a> (except where vendors
+    may have applied patches that bring in problematic changes from kernels outside
+    that range).
+
+    <p> If after reading this question and the one <a href="#platforms">above</a> you
+    believe your platform should be supported but cannot get BLCR to work, then please
+    consult our <a href="#bugzilla">bug database</a> for possible solutions and then
+    report the problem if you don't find it already reported.  We can't try every
+    possible platform ourselves and count on user's bug reports to let us know when
+    our testing has missed something.
+</blockquote>
+
+<h4><a name="threads">Can BLCR checkpoint/restart multithreaded programs?</a></h4>
+<blockquote>
+    Yes, BLCR can checkpoint both single- and multithreaded (pthreads) programs
+    linked with the NPTL implementation of pthreads.
+    <strong>Since with the 0.7.0 release, BLCR no longer provides full support
+    for the older LinuxThreads implementation of pthreads.  Please contact us if
+    you are able to devote some effort to restoring/maintaining such support in
+    the future.</strong>
+    <p> BLCR has not been tested with other threading packages,
+    such as those used by some Java runtimes.  We are interested in hearing of
+    both success and failure with other threading packages.
+</blockquote>
+
+<h4><a name="procs">Can BLCR checkpoint/restart multi-process applications?</a></h4>
+<blockquote>
+    Yes, starting with version 0.5.0 BLCR is able to save and restore groups of
+    related processes together with the pipes that connect them.  To do this, BLCR
+    must be given a single request that covers all the processes involved.  Currently
+    there are three ways to specify a group request to BLCR:
+    <ul>
+      <li>A process "tree", consisting of a process and all its non-orphaned descendants.
+         (An orphaned process is one who's parent has exited, leaving it as a child
+         of the <tt>init</tt> process).
+      <li>A POSIX process group, consisting of all processes with a given PGID (including
+          orphaned processes, if any).
+      <li>A POSIX session, consisting of all processes with a given SID (including
+          orphaned processes, if any).
+    </ul>
+
+    <p>While BLCR can save and restore the pipes used for IPC among processes in these
+    groups, it is unable at this time to deal with most other IPC mechanisms
+    (see <a href="#limitations">next FAQ</a>).
+</blockquote>
+
+<h4><a name="limitations">Are there limits to the types of programs can BLCR checkpoint? </a></h4>
+<blockquote>
+    Yes. BLCR does not support checkpointing certain process resources. 
+    While the following list is not exhaustive, it lists the most significant
+    issues we are aware of.
+<ul>
+    <li>BLCR will not checkpoint and/or restore open sockets
+    (TCP/IP, Unix domain, etc.).  At restart time any sockets will appear
+    to have been closed.</li>
+
+    <li>BLCR will not checkpoint and/or restore open character or block devices
+    (e.g. serial ports or raw partitions).   At restart time any devices will
+    appear to have been closed.</li>
+
+    <li>BLCR does not handle SysV IPC objects (man 5 ipc).  Such
+    resources are silently ignored at checkpoint time and are not
+    restored.</li>
+
+    <li>If a checkpoint is taken of a process with any "zombie" children, then
+    these children will not be recreated at restart time.  A "zombie" is
+    defined as a process that has exited, but who's exit status has not yet
+    been reaped by its parent (via <tt>wait()</tt> or a related function).
+    This means that a wait()-family call made after a restart will never return
+    a status for such a child.</li>
+</ul>
+
+    <p>If needed, applications can arrange to save any information necessary to
+    recreate/reacquire such resources at restart time
+    (see <a href="#callbacks">next FAQ</a>).
+</blockquote>
+
+<h4><a name="callbacks">What if I want to checkpoint a program that uses resources that BLCR can't checkpoint?</a></h4>
+<blockquote>
+    BLCR supports adding 'callbacks' to user-level code, which are called when a
+    checkpoint is about to be performed, and when it is restarted (or continues
+    on after the checkpoint).  This is how MPI communication can be handled
+    (see <a href="#mpi">next FAQ</a>).
+
+    <p>Full documentation of the callback interface has not yet been written because some of
+    the interfaces are still subject to change.  However, the comments in the file
+    <tt>libcr.h</tt> should provide enough to get started.
+</blockquote>
+
+<h4><a name="mpi">Does BLCR support checkpointing parallel/distributed applications?</a></h4>
+<blockquote>
+    Not by itself.  But by using checkpoint callbacks (see <a href="#callbacks">previous FAQ</a>).
+    many MPI implementations have made themselves
+    checkpointable by BLCR.  You can checkpoint/restart an MPI application running
+    across an entire cluster of machines with BLCR, without any application code
+    modifications, if you use one of these MPI implementations (listed alphabetically):
+  <ul>
+    <li> Cray MPI for their current x86-64 systems
+    <li> Intel MPI 4.1 or later
+    <li> LAM/MPI 7.x or later
+    <li> MPICH-V 1.0.x
+    <li> MPICH2-1.3a2 or later, including MPICH v3.x
+    <li> MVAPICH2 0.9.8 or later
+    <li> Open MPI 1.3 or later
+    <li> SGI MPT since September 2010
+  </ul>
+    See the documentation of your specific MPI for usage instructions.  In almost
+    all cases you will need to use a tool provided by the MPI implementation
+    to request a checkpoint or restart, rather then using BLCR's <tt>cr_checkpoint</tt>
+    and <tt>cr_restart</tt> utilities.
+    <p>
+    At this time we are not aware of other MPI implementations that are
+    working on BLCR support, but surprisingly our information is not always the latest.
+    If in doubt, check the support channels of your favorite MPI implementation
+    <p> Note that any questions about using these MPI implementations with BLCR is more likely
+    to receive a useful response if directed to the support channels of the specific
+    MPI implementation than to the checkpoint@lbl.gov list.
+</blockquote>
+
+<h4><a name="rootbuild">Do I need root access in order to use BLCR?</a></h4>
+<blockquote>
+    Root access is needed to install the BLCR kernel modules.  However, once
+    these are installed, any user can checkpoint and restart their own programs
+    without needing root permission.
+</blockquote>
+
+<h4><a name="batch">Is BLCR integrated with any batch systems? </a></h4>
+<blockquote>
+    We are aware of the following, but we are not always informed of new efforts
+    to integrate with BLCR.  For the most up-to-date information you should consult
+    the support channels of your favorite batch system.
+    <dl>
+    <dt> TORQUE version 2.3 and later</dt><dd>
+	Support for serial and parallel jobs, including periodic checkpoints and
+        <tt>qhold</tt>/<tt>qrls</tt>.
+	</dd>
+    <dt> SLURM version 2.0 and later</dt><dd>
+	Support for automatic (periodic) and manually requested checkpoints.
+	</dd>
+    <dt> SGE (aka Sun Grid Engine)</dt><dd>
+	Information on configuring SGE to use BLCR can be found
+	<a href="http://gridengine.sunsource.net/howto/APSTC-TB-2004-005.pdf">here</a>.
+	There is also a thread on the checkpoint@lbl.gov list about modifications
+	to those instructions.  The thread begins with
+	<a href="http://mantis.lbl.gov/hypermail/checkpoint/0952.html">this</a> posting.
+	</dd>
+    <dt> LSF</dt><dd>
+	Information on configuring LSF to use BLCR can be found in
+	<a href="http://mantis.lbl.gov/hypermail/checkpoint/1211.html">this</a> posting
+        on the checkpoint@lbl.gov list.
+	</dd>
+    <dt> Condor</dt><dd>
+	Information on configuring Condor to use BLCR to checkpoint "Vanilla Universe"
+	jobs with the help of Parrot can be found 
+	<a href="http://www.escience.cam.ac.uk/projects/camgrid/blcr.html">here</a>.
+	</dd>
+     </dl>
+    Work is ongoing by third
+    parties to integrate BLCR into other batch systems.  If you are
+    interested in adding BLCR support to a job launcher/scheduler, please
+    contact us!
+    <p> Note that any questions about using these batch systems with BLCR is more likely
+    to receive a useful response if directed to the support channels of the specific
+    batch system than to the checkpoint@lbl.gov list.
+</blockquote>
+
+<h4><a name="porting">How hard is it to port BLCR to an architecture that isn't currently supported?</a></h4>
+<blockquote>
+    <p> Most of the architecture-specific code in BLCR is confined to small set of
+    logic to save and restore the CPU-specific register set (vmadump) and some
+    gcc inline assembly for atomic operations and special system calls.  The majority of
+    BLCR's code base is entirely processor-independent.
+
+    <p> If you are interested in
+    seeing BLCR run on other chips, and are able to devote programmer resources,
+    please contact us!  The Alpha platform is likely to be
+    the easiest since vmadump already supports this architecture for
+    Linux 2.6 kernels.
+</blockquote>
+
+<hr>
+<h3>Build/Install Questions</h3>
+
+<h4><a name="patch">Does BLCR require a kernel patch?</a></h4>
+<blockquote>
+    No. All of the kernel logic used by BLCR is implemented within kernel
+    modules.  You can thus compile BLCR and load it into a running kernel (with
+    <tt>modprobe</tt> or <tt>insmod</tt>) without needing to recompile your kernel or reboot.
+</blockquote>
+
+<h4><a name="buildreqs">What do I need in order to build and use BLCR?</a></h4>
+<blockquote>
+    A machine that is running a supported architecture (x86 and x86_64 are fully
+supported and PPC/PPC64 and ARM are "Experimental") and
+    Linux kernel 2.6.x or 3.x.y.
+
+    <p> A set of <b>configured</b> kernel headers that matches the kernel you wish to build against.
+    By configured, we mean that <tt>include/linux/version.h</tt> and the files in
+    <tt>include/linux/modules/</tt> match the target kernel.
+    For many distributions a kernel-devel or linux-headers package is often
+    enough if using the vendor's kernel.  For a custom kernel, the actual kernel build
+    directory is often required.
+
+    <p> The kernel's symbol table.  Normally the file <tt>/boot/System.map</tt>, or
+    equivalent will serve this purpose.
+</blockquote>
+
+<h4><a name="unconfig">What if I my kernel sources are unconfigured?</a></h4>
+<blockquote>
+    BLCR needs to be able to examine a linux kernel source tree that has been
+    configured, and this configuration must match the kernel that you will run
+    BLCR against.  
+
+    <p>If you do not have a configured linux kernel source tree, you may be able
+    to create one fairly easily.  Many distributions provide a 'config' file
+    that is all you need to easily produce a configured kernel source tree.
+    Good places to look for a config file include
+    <tt>/boot/config-2.6.5-1.358</tt> or <tt>/config-2.6.5-1.358</tt>.  In
+    some distributions, the kernel is actually setup to include its
+    configuration in <tt>/proc/config.gz</tt> (or <tt>/proc/config.bz2</tt>).
+    If you can find any one of these files then we can proceed with the
+    following steps:
+
+<ol>
+<li>Make a copy of the unconfigured source for the linux kernel you are using, and copy in the file you located:
+<pre>
+  $ cp -a /usr/src/kernel-source-2.6.5 /tmp/linux-2.6.5-1.358
+  $ cd /tmp/linux-2.6.5-1.358
+  $ cp [CONFIG_FILE] .config
+</pre></li>
+<li>Configure it using one of the following:
+<ul>
+<li>For kernels 2.6.6 and newer:
+<pre>
+  $ make modules_prepare
+</pre></li>
+<li>For 2.6.x kernels prior to 2.6.6:
+<pre>
+  $ make prepare-all scripts
+</pre></li>
+</ul>
+<li>Once that is done, you should be able to configure BLCR using the newly
+configured kernel source.  You should continue to use the <tt>System.map</tt>
+file from your running kernel.  What you want is probably something like
+<pre>
+  $ ./configure --with-system-map=/boot/System.map-2.6.5-1.358 --with-linux=/tmp/linux-2.6.5-1.358.
+</pre></li>
+</ol>
+</blockquote>
+
+<h4><a name="modvesion">How do I get past the error "linux/modversions.h: No such file or directory"?</a></h4>
+<blockquote>
+    <p> Please try rebuilding blcr after commenting out the following six lines
+    near the top of the files <tt>vmadump/vmadump.c</tt> and <tt>blcr_imports/imports.c</tt>:
+<pre>
+   #if defined(CONFIG_MODVERSIONS) &amp;&amp; ! defined(MODVERSIONS)
+     #define MODVERSIONS
+   #endif
+   #if defined(MODVERSIONS)
+     #include &lt;linux/modversions.h&gt;
+   #endif
+</pre>
+    Let us know if your compilation still doesn't work.
+</blockquote>
+
+<h4><a name="systemmap">What if I get an error about my <tt>System.map</tt> file?</a></h4>
+<blockquote>
+    To build, BLCR needs to read the <tt>System.map</tt> file that corresponds to the
+    kernel you will use BLCR with.  Generally, BLCR will find this file
+    "automagically" during <tt>./configure</tt>, but some distributions do not
+    provide it, and/or you may not keep yours in a standard place.
+
+    <p>If you know where the correct <tt>System.map</tt> file is, use 
+<pre>
+  $ ./configure --with-system-map=PATH_TO_YOUR_SYSTEM.MAP
+</pre>
+
+    <p>If your <tt>System.map</tt> is absent, it may still be available as an optional RPM.
+    For instance you may be able to get it by installing (depending
+    on the release) either the <tt>kernel-source</tt> or <tt>kernel-devel</tt> RPMs
+    for the kernel you will use BLCR with.
+
+    <p>However, Fedora Core 2 and some of its derivatives are shipping a "stripped-down"
+    <tt>System.map</tt> file.  If this is the case, BLCR will abort during configuration
+    with an error stating
+    that the <tt>System.map</tt> cannot be used.  You must install an additional RPM which
+    contains a full <tt>System.map</tt> in order to build BLCR.  In Fedora Core 2
+    the '<tt>kernel-debuginfo</tt>' RPM contains a full <tt>System.map</tt> file, which it
+    will install into the <tt>/usr/lib/debug/boot</tt> directory.  BLCR's configure
+    script will search this directory, but just to be certain you may still wish to pass
+    '<tt>--with-system-map</tt>' to point configure at the correct <tt>System.map</tt> file.
+  <blockquote>
+    <strong>Important Note</strong>:  If you need to install the
+    <tt>kernel-debuginfo</tt> RPM, <em> make sure the correct version
+        is installed</em>.  Specifically, the 'arch' type must be the same.  If your
+    kernel was built for the '<tt>i386</tt>' (or '<tt>i586</tt>', or
+    '<tt>i686</tt>'), the kernel-debuginfo RPM must have the same value.  Thus,
+    for an <tt>i586</tt> kernel, install
+    '<tt>kernel-debuginfo-2.6.5-1.358.i586.rpm</tt>'.  To determine which
+    kernel version you have, use
+<pre>
+  $ rpm -q kernel --qf '%{version}-%{release}.%{arch}\n'
+</pre>
+    To make sure that you have installed compatible <tt>kernel</tt> and
+    <tt>kernel-debuginfo</tt> RPMs, use
+<pre>
+  $ rpm -q kernel kernel-debuginfo --qf '%{version}-%{release}.%{arch}\n'
+</pre>
+    (replace '<tt>kernel</tt>' with '<tt>kernel-smp</tt>' if you are using an SMP
+    kernel).  You should see the same string, repeated twice.
+
+    <p>If you try to use BLCR with the wrong <tt>System.map</tt>, BLCR will
+    build without complaints, but will probably detect the problem when the
+    <tt>blcr.o</tt> kernel module is loaded (it does this by comparing some
+    well-known exported kernel symbols' addresses to those provided by the
+    <tt>System.map</tt> file), and the module load will be aborted. 
+  </blockquote>
+</blockquote>
+
+<h4><a name="kcompiler">Why do I get "Invalid module format" when loading BLCR's kernel modules?</a></h4>
+<blockquote>
+    Kernels from 2.6.0 through 2.6.18 check at module load time that the same compiler version (major and minor
+    numbers) were used to build both the module and the kernel.  This is the error you will see
+    if they don't match.  When this happens, you will need to reconfigure and build BLCR with
+    the correct compiler.  When a module fails to load due to a version mismatch, you should
+    be able to find a message in the system logs indicating the required compiler version:
+<pre>
+  blcr_imports: version magic '2.6.17 SMP mod_unload PENTIUM4 gcc-3.4' should be '2.6.17 SMP mod_unload PENTIUM4 gcc-3.2'
+</pre>
+    Alternatively, the following should find the "signature" in existing kernel modules:
+<pre>
+  $ find /lib/modules/`uname -r` -name '*.ko' -print | head -1 | xargs strings | grep gcc
+  vermagic=2.6.17 SMP mod_unload PENTIUM4 gcc-3.2
+</pre>
+    In this case a gcc-3.2.X version is required.
+
+    <p>Regardless of which method is used to find the correct version, you will need to
+    reconfigure BLCR to use the correct compiler.  To do so, rerun <tt>configure</tt> with the
+    addition of "KCC=/path/to/the/correct/gcc" to the command line to set the compiler used
+    for building BLCR's kernel modules.
+</blockquote>
+
+<hr>
+<h3>Usage Questions</h3>
+
+<h4><a name="samepid">Why do I get this error: "Restart failed:
+        Device or resource busy"?</a></h4>
+<blockquote>
+    This is because a resource needed into order to restart the process is already
+    in use.  The most common problem is that another process already exists with the
+    same pid (process ID)--the operating system will not allow you to create two
+    programs with the same pid.   Very frequently this is because a user is trying
+    to 'restart' a process from a checkpoint, when the original process they took
+    the checkpoint of is still running!   
+
+    <p>If you are unlucky enough that some other, unrelated process has grabbed the
+    PID of your application, you must figure out some way to get rid of that
+    process.  If you own the process, you can of course simply kill it (or
+    checkpoint it!).  Otherwise, consider becoming root, or consulting your system
+    administrator.  BLCR will not kill another process for you (this 'feature' would
+    raise certain security issues).
+</blockquote>
+
+<h4><a name="prelink">Why can I restart jobs on the original machine they ran
+    on, but not a different node in my cluster?</a></h4>
+<blockquote>
+    You should be able to restart a BLCR-checkpointed job on a different node
+    (or set of nodes, for a parallel job), provided that all the nodes involved
+    provide the exact same libraries and other files that your executable needs.
+    By default BLCR does <em>not</em> save the contents of shared libraries that your program
+    uses, nor does it save the contents of any files your program has
+    <tt>open()</tt>'ed.  But so long as all of these libraries and/or files
+    exist on another node, your program should restart fine.
+
+    <p>Note that libraries must be <em>exactly</em> the same for a restart to
+    work; if they are not the same size, for instance, restart will not work.
+    If you've installed the same version of the operating system to all of your
+    nodes (and you've updated them all the same way), you would think things would be fine.  
+    However, some Linux distributions are using "prelinking", which is a
+    method for assigning fixed addresses for shared libraries to load into
+    executables.  Prelinking is a feature which enables applications that use many
+    shared libraries to load faster.  The fixed address used by the same library
+    on different nodes is often deliberately randomized (in order to defeat
+    buffer overflow attacks that could otherwise rely on standard libraries
+    being loaded at the same address on every machine with the same OS version).
+    Alas, if the prelinked addresses are different, you will not be able to
+    restart BLCR checkpoints on another node.
+
+    <p> The solution for this problem is to disable prelinking on both the
+    source and destination nodes of any process migration before starting any
+    process you may wish to migrate.  For most cluster environments, that means
+    disabling it on all nodes before using BLCR for migration.
+    Prelinking is a systemwide setting, so you will need to be root.
+    On Fedora Core 2, at least, the fix is to edit
+    <tt>/etc/sysconfig/prelink</tt> and set '<tt>PRELINKING=no</tt>'.  The
+    comments claim that this will cause prelinking to be undone automatically
+    the next night.  We've never been patient, and instead "undo" prelinking
+    immediately by running (as root)
+<pre>  # /usr/sbin/prelink --undo --all</pre>
+    Automating this process for an entire cluster depends on your specific environment.
+
+    <p>BLCR 0.7.0 introduced the <tt>--save-*</tt> family
+    of options to <tt>cr_checkpoint</tt> to cause the executable and/or shared
+    libraries to be included in the context file.  This may significantly increase
+    the size of the context files.  Therefore we recommend this approach only
+    if you cannot ensure uniform library versions (w/o prelinking) across the
+    machines you wish to migrate among.
+
+    <p>Some versions of <tt>glibc</tt> use <tt>mmap()</tt> to load locale data.
+    CentOS 5 and Scientific Linux 5, for example, store the locale information
+    in the file <tt>/usr/lib/locale/locale-archive</tt>.  This file is 
+    generated when <tt>glibc</tt> (specifically, the <tt>glibc-common</tt> RPM)
+    is installed, and contains archived versions of all of the localization 
+    databases.  Since the <tt>locale-archive</tt> file is not included in
+    the RPM, but is generated at install time, the contents of this file
+    can differ between your compute nodes.  This causes problems migrating
+    programs that use <tt>glibc</tt>'s locale support, <tt>bash</tt> being
+    the most notable.  If you see problems migrating <tt>bash</tt> scripts
+    between nodes, you might have this problem.
+
+    <p>You can fix this problem in one of three ways.  First, you can use the
+    <tt>--save-all</tt> option to <tt>cr_checkpoint</tt> to ensure that the
+    correct localization data is loaded at restart time.  Second, you can
+    disable localization support completely by using <tt>export LANG=C</tt>
+    in your shell environment.  Finally, we've been successful in copying
+    one version of the <tt>/usr/lib/locale/locale-archive</tt> across all of
+    your compute nodes.  You'll need to update this file every time you
+    update your <tt>glibc-common</tt> RPM.
+
+</blockquote>
+
+<h4><a name="enoent">Why do I get the error "Restart failed: No such file or directory"?</a></h4>
+<blockquote>
+    This error normally means that a file that was open at the time the checkpoint
+    was taken is no longer present (it is either completely gone, or perhaps just
+    not present at the same pathname as it was previously).  You should examine your
+    system logs (such as <tt>/var/log/messages</tt> or dmesg) for an indication of the
+    file that caused the problem.  You will probably find a message like one of the following:
+    <pre>    vmadump: mmap failed: /tmp/hsperfdata_[user]/[pid]<br>    Failed to open file '/tmp/foobar'<br></pre>
+    In the case of files in a directory of the form  <tt>/tmp/hsperfdata_[user]</tt> see
+    <a href="#hsperfdata">the hsperfdata FAQ entry</a>.  For other files, there are a
+    a couple of things you might try.
+    <p> If the file is a temporary created by your application, it is
+    possible that it has been removed when the application terminated.  For instance, if
+    you checkpoint an application with the <tt>--term</tt> option to the <tt>cr_checkpoint</tt>
+    utility, then <tt>SIGTERM</tt> was sent to the application, causing it to cleanup before
+    terminating.  If this is the case, then passing <tt>--kill</tt> will cause the uncatchable
+    signal <tt>SIGKILL</tt> to be sent, thus preventing any cleanups by the application.  Of
+    course, if your application ran to completion and removed its temporary file at its
+    normal conclusion, then you are on your own as to how to recover the file.
+    <p> If you are trying to perform migration of a process from one machine to another, then
+    it is possible that the file exists, but not at the full pathname that was saved by BLCR.
+    This is especially true if network filesystem mountpoints differ between machines.  You
+    may be able to work around such issues with symbolic links
+    among directories, but BLCR provides a <tt>--relocate</tt> option to <tt>cr_restart</tt>
+    that can easily deal with such situations.
+    <p>Future versions of BLCR will make it possible to capture the contents of all open
+    files, thus providing a mechanism to eliminate problems of this sort (at the cost of
+    increased context file size, of course).
+</blockquote>
+
+<h4><a name="eperm">Why do I get the error "Restart failed: permission denied"?</a></h4>
+<blockquote>
+    There are multiple reasons why a restart would fail with this message, but the most
+    common is filesystem permissions.  You should examine your system logs (such as
+    <tt>/var/log/messages</tt> or dmesg) for an indication of the file that caused the
+    problem.  You will probably find a message like one of the following:
+    <pre>    vmadump: mmap failed: /var/db/nscd/hosts<br>    Failed to open file '/tmp/foobar'<br></pre>
+    You should verify that our user has permission to access the file.  In the case
+    of files in the directory <tt>/var/db/nscd</tt> see <a href="#nscd">the NSCD FAQ entry</a>.
+</blockquote>
+
+<h4><a name="preload">
+Why do I get the error "ERROR: ld.so: object 'libcr_run.so.0' from LD_PRELOAD cannot be preloaded: ignored"?
+</a></h4>
+<blockquote>
+    This error is almost always a symptom that BLCR's shared libraries
+    are not located for one of two reasons:
+    <ul>
+    <li> The libraries have been installed in a "standard" directory, but
+    the utility <tt>ldconfig</tt> has not been run as root to update the
+    loader cache.
+    <li> The libraries have been installed in a "non-standard" directory
+    and the directory has not been added to the LD_LIBRARY_PATH environment
+    variable.
+    </ul> 
+    Please see, respectively, the sections "Updating ld.so.cache" and
+    "Configuring Users' environments" in the BLCR Admin Guide for
+    information on resolving these installation issues.
+</blockquote>
+
+<h4><a name="nscd">Why do I get "vmadump: mmap failed: /var/db/nscd/[something]" in the system logs?</a></h4>
+<blockquote>
+    The files in the directory <tt>/var/db/nscd/</tt> are created by the Name Service
+    Cache Daemon (NSCD, for short) and are protected against normal file accesses.
+    When the NSCD is enabled, certain C library operations talk to the daemon which uses
+    filedescriptor passing to allow the application to <tt>mmap()</tt> these files.  Unfortunately, BLCR
+    cannot replay the filedescriptor passing (there is no way to know that a given filedescriptor
+    was obtained in this way).  This leaves BLCR to rely on normal filesystem permissions when
+    trying to reestablish the <tt>mmap()</tt>, which in this case finds insufficient permissions.
+    <p>
+    C library functions that may use NSCD include host database lookups (such as
+    <tt>gethostbyname()</tt>), user database lookups (such as <tt>getpwuid()</tt>) and
+    other database lookup functions.  Since use of NSCD may speed these lookups relative
+    to network-based lookups such as NIS, LDAP or DNS, this is generally a good thing.
+    <p>
+    If you are experiencing the "mmap failed: /var/db/nscd/..." error, you have at
+    least the following three options:
+  <ul>
+    <li> You may choose to disable NSCD or remove it from you system entirely.  If you
+    choose this option then consult the documentation for your specific Linux distribution
+    for instructions on disabling services or removing packages.</li>
+    <li> You may choose to keep NSCD enabled, but disable the <tt>mmap()</tt> mechanism.
+    This will still allow NSCD to cache lookups, but the interaction between the
+    application and NSCD will be slower.  If the database lookups are primarily
+    resolved by network services such as NIS, LDAP and DNS then this is still a net
+    win when compared to disabling or removing NSCD entirely.<br>
+    To disable the <tt>mmap()</tt> mechanism add the following lines (or modify
+    similar ones) in the file <tt>/etc/nscd.conf</tt>:
+<pre>
+	shared	passwd	no
+	shared	group	no
+	shared	hosts	no
+</pre>
+    You will need to restart NSCD for the change to take effect (consult the
+    documentation for your specific Linux distribution for instructions on 
+    restarting services).</li>
+    <li> Since 0.8.3, BLCR has the option to disable NSCD per-process when <tt>libcr</tt> is
+    initialized.  This option has the benefit of avoiding this error in many cases, while
+    allowing the full benefit of NSCD for applications that run without <tt>libcr</tt>.
+    To enable this behavior set the environment variable <tt>LIBCR_DISABLE_NSCD</tt> to any
+    non-empty value.
+    Unlike the previous two options, this approach does not require one to have root permission.
+    However there is one weakness: if NSCD is used by a process prior to <tt>libcr</tt>'s
+    initialization, then one could still experience this problem.  If this happens to
+    you then you will need to apply one of the other two options.</li>
+  </ul>
+    Our thanks to Guy Coates <tt>&lt;gmpc AT sanger DOT ac DOT uk&gt;</tt>
+    for information on the <tt>/etc/nscd.conf</tt> settings.<br>
+    Our thanks to Hongjia Cao <tt>&lt;hjcao AT nudt DOT edu DOT cn&gt;</tt> for information leading to the
+    implementation of <tt>LIBCR_DISABLE_NSCD</tt>.
+</blockquote>
+
+<h4><a name="hsperfdata">Why do I get "vmadump: mmap failed: /tmp/hsperfdata_[user]/[pid]" in the system logs?</a></h4>
+<blockquote>
+    Directories of the form <tt>/tmp/hsperfdata_[user]/</tt> are created by Sun's Java
+    runtime environment (JRE), and the individual files in this directory are removed
+    when the application exits.  This includes exits due to catchable fatal signals, so if a
+    checkpointed Java application is terminated by such a signal these files will be
+    unavailable for a subsequent restart.  You have several options to deal with this issue:
+  <ul>
+    <li> If you are trying to perform migration of a process from one machine to another, then
+    you may try manually copying the file from one machine to another.  While this is not a
+    safe practice in general, we have had reports of success from users who have tried this.</li>
+    <li> If you experiencing this problem when running Matlab but don't need the Java features,
+    you can avoid this issue entirely by passing <tt>--nojre</tt> when launching Matlab.</li>
+    <li> You may disable creation of hsperfdata files by passing <tt>-XX:-UsePerfData</tt>
+    when starting the Java application.  Note, however, that certain performance monitoring
+    or debugging tools may require the hsperfdata files.</li>
+    <li> If the signal causing termination of the Java application is due to the <tt>--term</tt>
+    option to the <tt>cr_checkpoint</tt> utility, passing <tt>--kill</tt> instead will
+    cause the uncatchable signal <tt>SIGKILL</tt> to be sent, thus preventing any cleanups by
+    the JRE.</li>
+    <li> If the signal is due to the <tt>cr_signal</tt> value in the arguments to the
+    <tt>cr_request_checkpoint()</tt> function, then use of <tt>SIGKILL</tt> will prevent
+    cleanups, as above.</li>
+  </ul>
+    Our thanks to Guy Coates <tt>&lt;gmpc AT sanger DOT ac DOT uk&gt;</tt>
+    for information on the <tt>-XX:-UsePerfData</tt> JRE option.
+</blockquote>
+
+<h4><a name="sig31">Why does my application dies with "Real-time signal 31" (or 32, etc.) when I try to checkpoint it?</a></h4>
+<blockquote>
+    This error was possible in older releases of BLCR when an application was not
+    checkpointable.  This should not happen in release 0.5.0 or newer and should
+    be reported as a bug if seen.
+</blockquote>
+
+<h4><a name="staticlink">Why can't I checkpoint my statically linked application?</a></h4>
+<blockquote>
+  If you can checkpoint and restart a dynamically linked application correctly, but
+  cannot do so with the same application linked statically, this FAQ entry is for you.
+  There are multiple reasons why BLCR may have problems with statically executables.
+  <ul>
+    <li>The <tt>cr_run</tt> utility only supports dynamic executables<br>
+    If you wish to checkpoint an unmodified executable, the typical recipe is
+<pre>
+  $ cr_run my_app my_args
+</pre>
+    However, the <tt>cr_run</tt> utility does its work using the "LD_PRELOAD"
+    environment variable to force loading of BLCR's support code into the
+    address space the applications.  That mechanism is only functional for
+    dynamically linked executables.  There is no magic we can perform today
+    that will resolve this (though in the future we'd like to replace our
+    use of LD_PRELOAD with a kernel-side mechanism).  So, you'll need to
+    relink any statically linked executables to include BLCR support.
+    </li>
+    <li>Linking BLCR's libraries statically takes special care<br>
+    OK, we've told you why <tt>cr_run</tt> doesn't work and told you to
+    relink.  You tried linking with <tt>-lcr_run</tt> and/or <tt>-lcr</tt>
+    and still can't get a checkpoint to work.  What went wrong?<p>
+    Please reread the "Cautionary linker notes" section of the BLCR Users
+    Guide.  You need a <tt>-u</tt> option in addition the the <tt>-l</tt>
+    or the static linking will simply ignore BLCR's library.
+    </li>
+    <li>BLCR doesn't support LinuxThreads<br>
+    Ok, what else could go wrong?  You've followed the guidance given
+    in the "Cautionary linker notes" section of the BLCR Users Guide
+    when you linked your application.  You even ran
+<pre>
+  $ nm my_app | grep link_me
+</pre>
+    to be sure the symbol you specified with <tt>-u</tt> is linked in.
+    However, you are seeing weird crashes of your application when you
+    try to checkpoint.<p>
+    The culprit might be LinuxThreads.  Why?  Because at the time this
+    FAQ entry is being written, there are many Linux distributions
+    that install the static libs for LinuxThreads in the default library
+    search path, and with the NPTL static libs elsewhere.  The resolution
+    could be as simple as linking your application with <tt>-L/usr/lib/nptl</tt>
+    or <tt>-L/usr/lib64/nptl</tt>, perhaps by setting an "LDFLAGS" variable
+    (though it is possible that your distribution has picked some other location).<p>
+    While it is not strictly required due to binary compatibility between
+    LinuxThreads and NPTL, we'd recommend that you at least consider a
+    recompile with <tt>-I/usr/include/nptl</tt> in CFLAGS.<p>
+    Note, of course, that if BLCR's utilities are statically linked to
+    LinuxThreads, then they need to be rebuilt too.  See the BLCR
+    Admin Guide for more information on that.
+    </li>
+  </ul>
+</blockquote>
+
+<h4><a name="auditing">Can I use Linux kernel auditing support with BLCR?</a></h4>
+<blockquote>
+    We recommend that you avoid auditing when using BLCR.  In particular, we've
+    seen odd restart failures (on return to user space) when migrating processes
+    between nodes where auditing is enabled (with <tt>/sbin/auditctl -e1</tt>) to nodes
+    where auditing is disabled.  The migrating processes themselves were not being
+    audited, neither at checkpoint time nor during restart.  In some cases, but not
+    all, these restart failures produce warning messages about leaked audit
+    contexts.
+
+    <p>More importantly, BLCR does not generate audit records
+    during checkpoint or restart.  As far as the auditing code is concerned, all of
+    the BLCR kernel calls are described by <tt>ioctl()</tt> records.  You don't see audit
+    records describing the creation of the context file, the <tt>mmap()</tt> established
+    during restart, or the file descriptors that are restored.  Please contact the
+    mailing list if you need auditing support <em>during</em> checkpoint/restart calls.
+
+    <p>Prior to version 0.8.4, the <tt>linked_fifo</tt> test caused a kernel BUG when audited
+    during restart.  If you encounter any other problems, please report a bug
+    to the mailing list.
+</blockquote>
+
+<hr>
+<h3>Additional Resources</h3>
+
+<h4><a name="website">Where can I download BLCR?<br>
+Where can I find more information?</a></h4>
+<blockquote>
+    To download the BLCR software, or for links to all the available information
+    about BLCR, please
+    visit <a href="http://ftg.lbl.gov/checkpoint">http://ftg.lbl.gov/checkpoint</a>.
+</blockquote>
+
+<h4><a name="mailaddr">Is there a mailing list for BLCR?</a></h4>
+<blockquote>
+    There is a mailing list of BLCR developers and some of the users
+    at <a href="mailto:checkpoint@lbl.gov">checkpoint@lbl.gov</a> and
+    which is archived:
+    <ul>
+    <li><a href="http://hpcrdm.lbl.gov/pipermail/checkpoint/">Current messages</a></li>
+    <li><a href="http://mantis.lbl.gov/hypermail/checkpoint/">Messages prior to May 1, 2010</a></li>
+    </ul>
+
+    <p> This list is managed by Mailman.  So, to subscribe (or unsubscribe)
+    visit <a href='https://hpcrdm.lbl.gov/cgi-bin/mailman/listinfo/checkpoint'>
+    https://hpcrdm.lbl.gov/cgi-bin/mailman/listinfo/checkpoint</a>.
+</blockquote>
+
+<h4><a name="bugzilla">Where can I report BLCR bugs?</a></h4>
+<blockquote>
+    If you think you've found a bug in BLCR, please <em>do</em> let us know about it.
+    There are many kernel-dependencies in BLCR and we could easily have missed testing on
+    a system like yours.  We count on user's bug reports to help ensure wide testing
+    coverage.
+
+    <p> The BLCR bug database is managed by a Bugzilla, located
+    at <a href="http://mantis.lbl.gov/bugzilla">http://mantis.lbl.gov/bugzilla</a>.
+
+    <p> Before reporting a bug, you are encouraged to search the database to see if
+    a bug report exists for your problem.  For some issues a solution can be
+    found in just a day.  So, a patch to fix your problem may already be attached
+    to an existing bug report.  BLCR is just one of a group of projects managed on
+    this server, so be sure to select product "BLCR" in your queries.
+</blockquote>
+
+</body>
+</html>

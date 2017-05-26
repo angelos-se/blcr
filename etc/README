@@ -1,0 +1,7 @@
+This directory contains an example init script for loading the BLCR
+kernel modules at boot time.  It is known to work with RedHat and
+similar systems.
+
+This file is NOT installed by default, but you can run 'make install'
+in this directory or add '--enable-init-script' to the configure flags
+to install it if desired.

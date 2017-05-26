@@ -1,0 +1,200 @@
+[DESCRIPTION] 
+
+Invoking cr_checkpoint causes a process (with or without all of its descendants),
+all processes within a process group, or all processes within a session,
+to be checkpointed.  The result is a checkpoint file (or a directory
+with one checkpoint file per process) that contains all the state needed to
+restart the process(es) at a later time.  Checkpointed processes can be
+restarted via 
+.BR cr_restart (1).
+
+To be checkpointed by cr_checkpoint, a process must have the 
+.I libcr.so 
+library (or one of its relatives)
+loaded.  This can be achieved by starting the program with 
+.BR cr_run (1),
+or by linking your application with 
+.BR -lcr .
+Or, the library may be loaded by other libraries you have linked
+with (such as a checkpoint-ready MPI library), or your system's parallel job
+startup script, etc.  Check your system documentation for details.
+
+.SS "File creation/replacement"
+By default (or if 
+.B --atomic 
+is passed) cr_checkpoint creates the new 
+context file/directory atomically:  either the checkpoint fails (and any
+existing context file/directory is unchanged), or it appears in the
+directory ready to be used by 
+.BR cr_restart .
+If an existing checkpoint with the same file name exists, it will either be
+be unmodified (if the new checkpoint fails for any reason), or replaced
+atomically (via
+.BR rename (2).
+If 
+\fB\-\-backup\fR[=\fINAME\fR]
+is passed, any existing checkpoint will be backed up instead, either
+to 
+.I NAME 
+or with a numbered extension 
+.RI ( \.~1~ , 
+.IR \.~2~ , 
+etc., with more recent
+checkpoints having higher numbers).  If 
+.B --clobber 
+is passed, the checkpoint will immediately remove any existing checkpoint files,
+and will write the checkpoint directly out into the target file/directory: this
+option uses less disk space if an existing checkpoint is present, since the old
+checkpoint is immediately discarded, but if the checkpoint fails, the
+pre-existing checkpoint is lost.  Finally, if
+.B --noclobber
+is passed, then the checkpoint will fail if the target file/directory exists.
+
+.SS "File sync"
+By default (or when 
+.B --sync 
+is passed), cr_checkpoint waits until the checkpoint is complete in memory, and
+additionally calls 
+.BR fsync (2) 
+on all files and directories involved in the checkpoint (including back-up
+files) to disk before exiting.  Passing 
+.B --nosync 
+causes these fsync calls to be skipped.
+
+.SS "Timeout"
+A maximum timeout in seconds can be set for a checkpoint via the 
+.B --time 
+flag: if the checkpoint takes longer than this, cr_checkpoint will print an
+error mesage and exit with an error.  If a timeout occurs, the state of the
+process or processes that were being checkpointed is undefined.
+
+.SS "Signals"
+By default checkpointed processes continue to run after a checkpoint is
+complete.  Alternatively, you may specify that they be stopped (via 
+.BR --stop ),
+or terminated/aborted/killed (via 
+.BR --term , 
+.BR --abort ,
+or 
+.BR --kill ).
+This is done by sending the appropriate signal to every process that is part of
+the checkpoint.
+If the processes were stopped at the time the checkpoint was requested, then
+.B --cont
+may be used to send SIGCONT to all processes after the checkpoint is completed.
+
+.SS "Memory mapped files"
+By default, checkpoints do not include any files that are mmap()ed into the
+process address space unless they are already unlinked at the time the checkpoint
+is taken.  This is a space/time saving optimization under the assumption that the
+files required will still be present (and uncorrupted) at restart time.  Typically
+the largest savings comes from not saving the executable file or dynamic (a.k.a
+shared) libraries.  However, options exist to cause the checkpoint to save these
+files as well.  The flag
+.B --save-exe
+will cause the executable file to be included in the context file.  The flag
+.B --save-private
+will include in the context file any files that are mapped with the MAP_PRIVATE
+flag, which under Linux includes the executable and dynamic/shared libaries.  The flag
+.B --save-shared
+is for saving files that are mapped with the MAP_SHARED flag.  Note that this is
+.I not
+the flag you want for shared libraries.
+At restart any file saved by these flags will be mapped into the process
+regardless of whether any file exists at the original location.
+If there is file at the original location it remains untouched by the restart.
+Finally
+.B --save-all
+and
+.B --save-none
+will cause all (or none) of these optional mmaped files to be saved.  The default
+is 
+.BR --save-none .
+When passing multiple of these options they are processed from left to right with
+all options being additive, except for
+.B --save-none
+which cancels the effects of any these options appearing earlier.
+
+.SS "Checkpointing ptrace()ed processes"
+There is (currently) no way to fully transparently deal with checkpoints of
+processes that are being traced with
+.BR ptrace (2).
+Therefore, the default behavior (also available via
+.BR --ptraced-error )
+is to return an error if any of the processes to be checkpointed are
+currently being ptraced.  However, there are two other possible behaviors
+to choose among:
+
+.TP
+.B --ptraced-skip
+Ptraced processes will be siliently excluded from the checkpoint.  No
+error is generated unless this results in zero processes checkpointed.
+
+.TP
+.B --ptraced-allow
+Ptraced processes will be checkpointed just like any other processes.
+.IR WARNING :
+Because the checkpointed process and the BLCR kernel module must interact
+using signals and system calls, the debugger (or other tracer) may need
+to `continue' the target process(es), possibly more than once, to allow
+the checkpoint to complete.
+
+.SS "Checkpointing ptrace()ing processes"
+There is (currently) no way to fully transparently deal with checkpoints of
+processes that are tracing other processes using
+.BR ptrace (2).
+Therefore, the default behavior (also available via
+.BR --ptracer-error )
+is to return an error if any of the processes to be checkpointed are
+currently ptracing other processes.  However
+.B --ptracer-skip
+is available to cause cr_checkpoint to silently exclude such processes
+from the checkpoint.  No error is generated in that case unless this would result
+in zero processes checkpointed.
+
+[EXAMPLES]
+
+To checkpoint the process with process ID 23452, saving its state to 
+file 
+.IR context.23452 :
+
+.RS 
+.B cr_checkpoint -p
+.I 23452
+.RE
+
+To checkpoint all the processes in process group 68473, and save them to 
+file 
+.IR groupie :
+
+.RS 
+.B cr_checkpoint -g -f 
+.I groupie 68473 
+.RE
+
+To checkpoint all the process in session 8362, and save separate 'context.PID'
+files for each process in directory 'my_checkpoints':
+
+.RS
+.B cr_checkpoint -s -d 
+.I my_checkpoints 8362
+.RE
+
+[BUGS]
+
+Some features in this manpage may be unimplemented.
+
+[REPORTING BUGS]
+
+Bug reports may be filed on the web at 
+.BR http://mantis.lbl.gov/bugzilla .
+
+[AUTHORS]
+
+Jason Duell, Paul Hargrove, and Eric Roman, Lawrence Berkeley National
+Laboratory.
+
+[SEE ALSO]
+
+.BR cr_restart (1), 
+.BR cr_run (1)

@@ -1,0 +1,10 @@
+This is the top-level README for BLCR
+
+See the doc/html subdirectory for installation and usage instructions.
+See doc/README for pointers to various other sources of information.
+See LICENSE.txt for copyright and license information.
+See config/cross_helper.c for information on cross-compilation.
+See README.devel for information targeted at BLCR developers.
+See README.FTB for information about "Fault Tolerance Backplane" support.
+
+Visit http://ftg.lbl.gov/checkpoint for the most current information.

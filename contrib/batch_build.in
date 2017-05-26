@@ -1,0 +1,67 @@
+#!/bin/sh
+# Given a list of kernel build directories on the command line,
+# this script will try to compile blcr against each of them.
+# This depends on having a System.map file in the kernel dir
+# with a redhat-style suffix to identify its type (smp, etc.).
+# A System.map w/o the suffix is possible, but not if using the
+# /boot/kernel.h mechanism.
+
+skipped=0
+failed=0
+total=0
+
+build () {
+  _srcdir=$1
+  _ver=$2
+  _args=$3
+  _map=$4
+  _blddir=BUILD-${_ver}
+  _logfile=log-${_ver}
+  echo -n "`date`: building ${_ver}... "
+  if [ -e ${_blddir} ]; then
+    echo "SKIPPED (build directory exists)"
+    skipped=`expr $skipped + 1`
+    return 1
+  fi
+  ( \
+	mkdir $_blddir && \
+	cd $_blddir && \
+	@TOP_SRCDIR@/configure --with-linux=$_srcdir ${_args} && \
+	make && \
+	echo SUCCESS \
+  ) > $_logfile 2>&1
+  if [ "$?" = 0 ]; then
+    echo SUCCESS
+    rm -Rf ${_blddir}
+  else
+    echo FAILURE
+    failed=`expr $failed + 1`
+  fi
+  total=`expr $total + 1`
+}
+
+for dir in $*; do
+  ver=`basename $dir | sed -e s/linux-//`
+  for s in $dir/System.map-*; do
+    case $s in
+      *-\*) break;;
+      *smp)		build $dir ${ver}smp --with-kernel-type=smp $s;;
+      *bigmem)		build $dir ${ver}bigmem --with-kernel-type=bigmem $s;;
+      *hugemem)		build $dir ${ver}bigmem --with-kernel-type=hugemem $s;;
+      *enterprise)	build $dir ${ver}enterprise --with-kernel-type=enterprise $s;;
+      *)		build $dir ${ver} --with-kernel-type=up $s;;
+    esac
+  done
+  if [ -e $dir/System.map ]; then
+    build $dir $ver
+  fi
+done
+    
+if [ $failed != 0 ]; then
+  echo "### FAILED $failed of $total builds ($skipped skipped)."
+  exit 1;
+fi
+if [ $skipped != 0 ]; then
+  echo "### WARNING skipped $skipped builds."
+fi
+exit 0

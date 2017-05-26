@@ -1,0 +1,525 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>Berkeley Lab Checkpoint/Restart User's Guide - version 0.8.6_b4</title>
+  <meta http-equiv="Content-Type"
+ content="text/html; charset=ISO-8859-1">
+</head>
+<body>
+<h1>Berkeley Lab Checkpoint/Restart (BLCR) User's Guide</h1>
+<p>This guide describes how to use Berkeley Lab Checkpoint/Restart (BLCR) for Linux.
+For information on installation, configuration, and maintenance of BLCR, please
+see the companion <a href="BLCR_Admin_Guide.html">BLCR Administrator's Guide</a>.
+<h2>1. About Berkeley Lab Checkpoint/Restart</h2>
+Checkpoint/Restart allows you to save one or more processes to a file
+and later
+restart them from that file. There are three main uses for this:
+<ol>
+  <li><b>Scheduling</b>: Checkpointing a program allows a program to be
+safely stopped at any point in its execution, so that some other
+program can run in its place. The original program can then be run
+again later.</li>
+  <li><b>Process Migration</b>: If a compute node appears to be likely
+to crash, or there is some other reason for shutting it down (routine
+maintenance, hardware upgrade, etc.), checkpoint/restart allows any
+processes running on it to be moved to a different node (or saved until
+the original node is available again).</li>
+  <li><b>Failure recovery</b>: A long running program can be
+checkpointed periodically, so that if it crashes due to hardware,
+system software, or some other non-deterministic cause, it can be
+restarted from a point in its execution more recent that starting from
+the beginning.</li>
+</ol>
+Berkeley Lab Checkpoint/Restart (BLCR) provides checkpoint/restart on
+Linux
+systems. BLCR can be used either with processes on a single computer,
+or
+on parallel jobs (such as <a href="http://www-unix.mcs.anl.gov/mpi/">MPI</a>
+applications) which may be running across multiple machines on a
+cluster of
+Linux nodes.
+<blockquote>
+Note: Checkpointing parallel jobs requires a library
+which has integrated BLCR support. At the present time, many MPI
+implementations are known to support checkpoint/restart with BLCR.
+Consult the corresponding BLCR FAQ <a href="FAQ.html#mpi">entry</a>
+for the current list.
+</blockquote>
+<h2>2. Checkpoint/restarting within a BLCR-aware batch control system</h2>
+One way to use BLCR is with a batch scheduler system (a.k.a. "job
+controller",
+"queue manager", etc.) that knows how to use the BLCR tools to
+checkpoint and
+restart the jobs under its control. You can simply tell such a system
+to
+"suspend" or "checkpoint" a job, and then later to "resume" or
+"restart" it.
+<p>BLCR has been integrated with several batch systems, to differing
+degrees.  Please see the
+corresponding BLCR FAQ <a href="FAQ.html#batch">entry</a> for the
+current list.
+</p>
+<p>The rest of this document assumes that your batch scheduler does <b>not</b>
+have built-in support for BLCR. In this case you will manually run the
+BLCR
+commands needed to checkpoint/restart your jobs.</p>
+<blockquote><i> Note: this does not mean that you cannot
+checkpoint/restart your applications if you use a batch system without
+built-in support for BLCR. It simply means that you have to do your
+checkpoints/restarts manually as described in the remainder of this
+document. To the batch system, a job that is
+checkpointed and terminated manually simply looks like a job that has
+"completed". A restart of an application looks like a "new" job.</i></blockquote>
+<h2>3. Checkpointing Jobs with the BLCR command-line tools</h2>
+<h3>3.1 Make sure BLCR is installed and loaded</h3>
+<p>This guide assumes that BLCR has already been successfully built,
+installed,
+and configured on your system (presumably by you or your system
+administrator).
+One easy way to test this is to use the '<tt>lsmod</tt>' command to see
+if the
+BLCR kernel module is loaded on the node(s) that your program will run
+on:</p> <pre>
+    % /sbin/lsmod | grep blcr
+    blcr                   47508   0
+    blcr_imports            7808   1 blcr
+</pre>
+If you don't see these two modules in the output of
+'<tt>lsmod</tt>', then BLCR is <b>not</b> yet running on your system.
+Consult the <a href="BLCR_Admin_Guide.html">BLCR Administrators Guide</a>
+for instructions on
+building and installing BLCR.
+<h3>3.2 Make sure your environment is set up correctly</h3>
+You must ensure that the BLCR commands, libraries and manual pages can
+be found
+in your shell.
+<p>Try running</p><pre>
+    % cr_checkpoint --help
+</pre>
+If '<tt>cr_checkpoint</tt>' cannot be found, you need to modify your '<tt>PATH</tt>'
+to
+include the directory where '<tt>cr_checkpoint</tt>' lives. You will
+probably
+also want to modify your '<tt>LD_LIBRARY_PATH</tt>' variable to contain
+the
+directory where '<tt>libcr.so</tt>' lives, and add the BLCR man
+directory to
+your '<tt>MANPATH</tt>'.
+<h4>Setting up your environment with 'modules'</h4>
+<p> If your system uses the <a href="http://modules.sourceforge.net/">Environment
+Modules</a> system to manage software
+packages, you may be able to get all of your needed environment
+settings simply
+by entering something like
+</p>
+<pre>    % module add blcr<br></pre>
+However, there is no requirement that 'blcr' is the name of the module
+you'll
+need; your administrator may have given it a different name
+('checkpoint',
+etc.). Or s/he may have neglected to add BLCR to the set of packages
+managed by
+modules, in which case you'll need to use the 'manual' technique
+below.
+<h4>Manually setting up your environment</h4>
+<p>Note that this is generally only required if your system administrator has
+neither installed BLCR in a well-known location nor modified the system-wide
+defaults for environment variables.  However, if your shell startup files
+override the system-wide defaults, this step may still be necessary.</p>
+<p>To manually set up your environment for BLCR, the first thing you
+need to
+know is where it has been installed. By default, BLCR installs into the
+'<tt>/usr/local</tt>' directory tree, but your system administrator may
+have put
+it elsewhere by passing '<tt>--prefix=<i>PREFIX</i></tt>' when BLCR was
+built
+(where <i>PREFIX</i> can be any arbitrary directory). See your system
+documents, or try commands such as '<tt>locate cr_checkpoint</tt>' or
+'<tt>find</tt>'.
+</p>
+<p>Once you have determined where BLCR is installed, enter the
+following
+commands (depending on which type of shell you are using), replacing
+<tt>PREFIX</tt> with the value specified for the '<tt>--prefix</tt>'
+option used when configuring BLCR.
+</p>
+<p>To configure a bourne-type shell (such as '<tt>bash</tt>' or '<tt>ksh</tt>'):
+</p><pre>
+    $ PATH=$PATH:<i>PREFIX</i>/bin
+    $ MANPATH=$MANPATH:<i>PREFIX</i>/man
+    $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<i>PREFIX</i>/lib:<i>PREFIX</i>/lib64
+    $ export PATH MANPATH LD_LIBRARY_PATH
+</pre>
+<p>
+To configure a csh-type shell (such as '<tt>csh</tt>' or '<tt>tcsh</tt>'):
+</p><pre>
+    % setenv PATH ${PATH}:<i>PREFIX</i>/bin
+    % setenv MANPATH ${MANPATH}:<i>PREFIX</i>/man
+    % setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:<i>PREFIX</i>/lib:<i>PREFIX</i>/lib64
+</pre>
+<p>These example assume a "multilib" system with both <tt>/lib</tt> and <tt>/lib64</tt>
+directories.  If your system lacks one of these two directories, the corresponding
+colon-separated entry may be omitted from the value of LD_LIBRARY_PATH.
+<p>
+The above examples set the PATH, MANPATH and LD_LIBRARY_PATH variables
+in your
+<i>current</i> shell only. It is strongly recommended that you make these
+settings permanent, to make these settings affect future sessions or
+windows. To do this, you must add the example commands to your shell's
+start up files.
+For a single user of BLCR, you should add the appropriate set of
+commands to the
+shell startup files in your home directory ('<tt>.bashrc</tt>' for
+bash, '<tt>.profile</tt>' for other bourne-type shells, or
+'<tt>.cshrc</tt>' for csh-type shells). For a system-wide
+installation, add the bourne shell commands
+to '<tt>/etc/bashrc</tt>' and '<tt>/etc/profile</tt>' and the csh
+commands to '<tt>/etc/cshrc</tt>'.
+</p>
+<h2>4. Checkpointing/restarting applications on a single machine</h2>
+<h3>4.1Types of applications supported</h3>
+BLCR currently supports:
+<ul>
+  <li> Single threaded applications</li>
+  <li> Multithreaded applications using the NPTL implementation
+of pthreads (NOTE: BLCR 0.7.0 dropped support
+for the older LinuxThreads implementation)</li>
+  <li>Process trees, meaning a process and all its "reachable"
+descendants (excluding those who's parent has exited)</li>
+  <li>Process groups (as defined by POSIX), which typically means a
+command pipeline launched by a shell (e.g. "cat foo bar | sort")</li>
+  <li>POSIX sessions, which typically means a login shell and all its
+descendants or a batch job</li>
+</ul>
+However, certain applications are not supported because they use
+resources not restored by BLCR:
+<ul>
+  <li> Applications which use sockets (regardless of address family).
+If a checkpoint is taken of a process with open sockets, they will not
+be restored when the process is restarted.&nbsp; Applications or
+libraries may register a checkpoint callback to manage socket
+connections to re-open them at restart time (this is how MPI libraries
+typically work with BLCR), but the core BLCR checkpointer does not
+directly support restoring sockets.
+In releases prior to 0.5.0 would fail at checkpoint time if sockets
+were open.</li>
+ <li> Applications which use character or block devices (e.g. serial
+ports or raw partitions).&nbsp; At restart time any devices will
+appear to have been closed.&nbsp; As with sockets, code that
+is BLCR-aware may choose to take its own measures to deal with
+devices.</li>
+  <li>Applications which use SystemV IPC mechanisms including shared
+memory, semaphores and message queues.&nbsp; As with sockets, code that
+is BLCR-aware may choose to take its own measures to deal with these
+resources.</li>
+  <li>Others - this list is not exhaustive.&nbsp; If you have questions
+about specific resources, see the section "<a
+ href="#For_more_information">For more information</a>" for contact
+information.</li>
+</ul>
+<h3><a name="making_checkpointable">4.2 Making an application checkpointable</a></h3>
+To be checkpointed successfully with BLCR, an application must contain
+some
+library code that BLCR provides. There are several ways of ensuring
+this.  <b>Note:</b> in the examples that follow we will use "<i>BLCR_LIBDIR</i>"
+to denote the directory where the BLCR appropriate libraries are installed.
+If <i>PREFIX</i> is the root of your BLCR install, then this will typically be
+either "<tt>PREFIX/lib</tt>" or "<tt>PREFIX/lib64</tt>" depending on various
+conditions.
+<ol>
+  <li> Start your executable via the with the '<tt>cr_run</tt>'
+command:
+    <pre>        % cr_run <i>your_executable [arguments]</i><br></pre>
+'<tt>cr_run</tt>' loads the BLCR library into your application at
+startup time. You do not need to modify an application to have it work
+with '<tt>cr_run</tt>'.&nbsp; However, '<tt>cr_run</tt>' is limited to
+dynamically linked executables; statically linked executables will need
+to use one of the approaches listed below.</li>
+
+  <li> Link your application with BLCR's '<tt>libcr_run</tt>'. For
+instance, you could make a simple 'hello world' C program
+checkpointable via
+    <pre>        % gcc -o hello hello.c -L<i>BLCR_LIBDIR</i> -lcr_run -u cr_run_link_me<br></pre>
+Your application
+will now look for the BLCR library whenever it starts up, but note that
+this does not mean it will automatically be found: you may also need
+to set your '<tt>LD_LIBRARY_PATH</tt>' environment variable as described earlier (or
+read the '<tt>ld</tt>' man page for information on '<tt>-rpath</tt>').
+If using this approach, please read the "Cautionary linker notes", below.</li>
+
+  <li> Link your application with BLCR's '<tt>libcr</tt>'. While linking
+<tt>libcr_run</tt> (see above) works for simple 'hello world' applications,
+it doesn't allow the application any sort of control over what gets checkpointed.
+To get such control, link to '<tt>libcr</tt>' with a command such as
+    <pre>        % gcc -o my_app my_app.c -L<i>BLCR_LIBDIR</i> -lcr<br></pre>
+As with the
+<tt>libcr_run</tt> example above, you may need to ensure correct settings in
+you environment to allow the library to be
+found when the application starts.
+Note that '<tt>-ldl</tt>' and '<tt>-lpthread</tt>' might also be required
+to satisfy dependencies in <tt>libcr</tt>.</li>
+
+  <li> Link your application with some library which uses BLCR. For
+instance, if your MPI library has been made BLCR-aware, it will cause
+<tt>libcr</tt> to be loaded, and so simply linking with <tt>mpicc</tt> is
+enough to make your application checkpointable.</li>
+
+  <li>Use run-time loading to dynamically link '<tt>libcr</tt>'
+or '<tt>libcr_run</tt>'
+(see the '<tt>dlopen</tt>' man page).&nbsp; This mechanism can be
+used for building applications or libraries that must work both with
+and without BLCR present on a system.</li>
+
+  <li>Force the '<tt>libcr_run.so</tt>' dynamic library to do loaded at
+startup by adding it's full pathname to the '<tt>LD_PRELOAD</tt>'
+environment variable (or just the filename if the directory is listed
+in '<tt>LD_LIBRARY_PATH</tt>').
+We do <b>not</b> recommend setting this in your environment
+in general (via '<tt>export</tt>' or '<tt>setenv</tt>'), since
+certain programs may interact poorly with the BLCR library
+logic. Instead, we recommend that you use a command like
+    <pre>        % env LD_PRELOAD=<i>BLCR_LIBDIR</i>/libcr_run.so.0 <i>your_executable [arguments ]</i><br></pre>
+This is essentially how '<tt>cr_run</tt>' works.</li>
+
+  <li> Finally there exists the option to link an application in
+such a way that it will simply disappear from a checkpoint.
+While this case may sound odd, there are actual instances of "helper"
+processes that can be omitted from a multi-process checkpoint and
+re-fork()ed when restarting.  For this purpose, one can link
+<tt>libcr_omit</tt>.  The link command is identical to that for
+<tt>libcr_run</tt>, changing the two instances of "run" to "omit":
+    <pre>        % gcc -o goodbye goodbye.c -L<i>BLCR_LIBDIR</i> -lcr_omit -u cr_omit_link_me<br></pre>
+</li>
+</ol>
+
+<p>If you your application does not link in BLCR's library via one of
+the mechanisms listed above, then any attempt to checkpoint it will
+fail gracefully&nbsp; In
+BLCR releases prior to 0.5.0 this situation would
+cause the program to die unless you handled BLCR's real-time signal
+explicitly.</p>
+
+<h4>Cautionary linker notes</h4>
+The ELF linker for Linux will normally include ELF DT_NEEDED tags for all
+dynamic libraries given on the link command line.  However, one can pass the
+<tt>--as-needed</tt> linker option to generate such tags only for those
+libraries that supply some symbol referenced elsewhere.  However, the intended
+use of <tt>libcr_run</tt> and <tt>libcr_omit</tt> is linking with executables
+that have <i>not</i> been modified to reference any BLCR symbols.  It is for
+this reason that the instructions above contain "<tt>-u cr_run_link_me</tt>"
+and "<tt>-u cr_omit_link_me</tt>".   These each serve to artificially create
+an undefined reference to a symbol which we've supplied in the BLCR libraries
+for exactly this purpose, thus ensuring the appropriate BLCR library is linked.
+
+<p>BLCR does not currently build static libraries (e.g. <tt>libcr.a</tt>) by default.
+However, if your installation was configured to do so, then a link command that
+includes <tt>-static</tt> will encounter the same problem detailed above
+for the <tt>--as-needed</tt> linker flag (and for the same reason: libraries
+are not linked unless they satisfy an undefined symbol reference.)  Since the
+problem is the same, it should come as no surprise that the solution is too:
+pass the appropriate "<tt>-u</tt> <i>symbol</i>" linker flags.  If your
+installation has gone so far as to install only static libraries (not shared),
+then you will face this problem even without the <tt>-static</tt> flag.
+
+<p>As a result of the issues above, we strongly recommend that authors of Makefiles
+that link <tt>libcr_run</tt> or <tt>libcr_omit</tt> uniformly use
+"<tt>-lcr_run -u cr_run_link_me</tt>" and <tt>-lcr_omit -u cr_omit_link_me</tt>".
+This will guard against the possibility of user-provided LDFLAGS (or equivalent)
+that could trigger (silently) the omission of the desired BLCR library from the
+generated executable.
+
+<p>While one would not normally link <tt>libcr</tt> without referencing any functions
+in it, <tt>libcr</tt> does provide the symbol <tt>cr_link_me</tt> for completeness.
+
+<p>Finally, note that the symbol you specify after <tt>-u</tt> is also a good
+way to check that you've linked in BLCR.  Assuming you've not stripped your
+executable, the following command should find the symbol:
+    <pre>        % nm my_app | grep _link_me<br></pre>
+If you don't see any output then you've probably not linked in BLCR's library.
+Recheck your link command, especially the value you used for <tt>BLCR_LIBDIR</tt>,
+
+<h3>4.3 Checkpointing the process</h3>
+To checkpoint a process, simply run
+<pre>    % cr_checkpoint <i>PID</i><br></pre>
+where <i>PID</i> is the application's process ID.
+<p>By default, '<tt>cr_checkpoint</tt>' saves a checkpoint, and then
+lets your
+application continue running, which is useful for saving
+the state of a
+process in case
+it later fails.&nbsp; However, you may terminate the
+process after it has been checkpointed by passing
+the
+'<tt>--term</tt>' flag:
+</p>
+<pre>    % cr_checkpoint --term <i>PID</i><br></pre>
+This causes a '<tt>SIGTERM</tt>' signal to be sent to the process at
+the end
+of the checkpoint. To send a different signal to
+your
+process at the end of the checkpoint, you can pass any arbitrary signal
+number
+using the '<tt>--signal=</tt><i>N</i>' flag or one of the related
+arguments documented in the manpage for <tt>cr_checkpoint</tt>.
+<p>By default BLCR interprets the final argument (<i>PID</i> in the
+examples above) as the process id of a (potentially multi-threaded) process to
+checkpoint, along with all of its children (and their children, etc.).&nbsp;
+However, there are options to request a checkpoint of a different <em>scope</em>
+for the checkpoint:
+</p>
+<pre>    % cr_checkpoint --pgid <i>PGID</i><br>    % cr_checkpoint --sid <i>SID</i><br>    % cr_checkpoint --tree <i>PID</i><br>    % cr_checkpoint --pid <i>PID</i><br></pre>
+These four examples request, respectively, checkpoints over the scope of a process
+group, a session, a process tree (the default), and a single process.&nbsp; The <i>PGID</i>
+is a process group identifier and <i>SID</i> is a session
+identifier. Here we take the terms "process
+group" and "session" to mean the set of processes having the given pgid
+or sid.&nbsp; In most cases the
+pgid
+or sid is just the pid of the process group leader or session leader.
+When in
+doubt, try using the '<tt>-j</tt>' option to '<tt>ps</tt>' to
+show
+PGID and
+SID columns.
+The '<tt>--tree</tt>' flag to '<tt>cr_checkpoint</tt>' requests
+a
+checkpoint of the process with the given pid, and all its descendants
+(excluding those who's parent has exited and thus become children of
+the
+'<tt>init</tt>' process). This is the same as the grouping shown
+by the output of the '<tt>pstree</tt>' command.
+<br>In BLCR releases prior to 0.6.0 the --pid option was the default.
+<p>When checkpointing multiple processes using one of the scope
+arguments other then <tt>--pid</tt>,
+all the pipes among the processes are saved and
+restored. Pipes to/from processes not within the checkpoint scope are
+not
+saved (these will be replaced at restart time by the stdin or stdout
+of the '<tt>cr_restart</tt>' process).</p>
+<p>While '<tt>cr_checkpoint</tt>' will accept a process
+group or session identifier as a scope argument, BLCR does not
+currently restore the pgid or sid of restarted processes.&nbsp; Instead
+restored processes inherit the pgid and sid of the '<tt>cr_restart</tt>'
+process.&nbsp; This is considered a sane default because an unmodified
+parent (such as a shell) of '<tt>cr_restart</tt>' would lose job
+control over the processes if these identifiers are restored.&nbsp; A
+future BLCR release will include the ability to request restore of
+these identifiers.</p>
+<p>Files that contain checkpoints are called <em>context files</em>.
+By
+default, they are named '<tt>context.<i>ID</i></tt>', where <i>ID</i>
+is the
+pid, pgid or sid that was checkpointed, and are stored in the current
+working
+directory of the '<tt>cr_checkpoint</tt>' process. You may specify an
+alternate name and location of the context file via the '<tt>--file</tt>'
+option.
+</p>
+<p>There are a number of other options that '<tt>cr_checkpoint</tt>'
+provides. See
+the man page (or '<tt>cr_checkpoint --help</tt>') for details.
+</p>
+<h3>4.4 Restarting the process</h3>
+<p>To successfully restart from a context file, certain conditions must be
+met:
+<ul>
+  <li> The PIDs of processes in the context file must not be in use, <em>OR</em> you
+may specify <tt>--no-restore-pid</tt> to obtain new pids (but see the <tt>cr_restart</tt> man
+page for limitations of this approach).</li>
+  <li> The original executable must be available: either it must exist with its contents 
+unchanged, <em>OR</em> you may specify any of
+of the options <tt>--save-exe</tt>, <tt>--save-private</tt> or
+<tt>--save-all</tt> to <tt>cr_checkpoint</tt> to include the executable
+in the context file.
+</li>
+  <li> All shared libraries used by the executable must be available: either they must exist with
+their contents unchanged, <em>OR</em> you may specify either of
+of the options <tt>--save-private</tt> or
+<tt>--save-all</tt> to <tt>cr_checkpoint</tt> to include the shared libraries
+in the context file.
+</li>
+  <li>Because BLCR saves and restore most open files "by reference"
+(storing pathnames rather than file contents), the following should be
+true of files that were open() or mmap()ed
+when the checkpoint was taken, though certain applications may be more
+tolerant than these rules imply:
+    <ul>
+      <li> Files must exist at their original paths, <em>OR</em>
+you may use the <tt>--relocate</tt> option to <tt>cr_restart</tt> to
+specify alternative location(s) for files.  It is
+permissible to use a copy of the original file (for instance
+when
+performing migration).</li>
+      <li> File and directories must have
+permissions that
+permit them to be opened for the original access modes.</li>
+      <li> Files open for reading should not be modified relative to
+their contents
+when the checkpoint was taken in any way observable by the application.</li>
+      <li> Files that are open for writing which are written in an
+append-only
+manner (regardless of the O_APPEND flag) may have data appended after
+the
+checkpoint was taken. Such data will be truncated away when the
+application
+is restarted.</li>
+      <li>Files that are open for both reading and writing should be
+restored
+to exactly their state at the time of the checkpoint.</li>
+    </ul>
+  </li>
+  <li>An exception to the open/mmaped files rules above exists for files
+already unlinked (deleted) at the time the checkpoint is taken.  When BLCR
+encounters such a file, its entire contents is saved in the checkpoint
+context file and is later restored as a new (also unlinked) file.</li>
+  <li>You may specify
+<tt>--save-all</tt> to <tt>cr_checkpoint</tt> to include all mmap()ed file
+in the context file and thus eliminate the requirements above with respect
+to mmap()ed files <i>only</i> -- this option does not do anything for
+files that have been open()ed.</li>
+</ul>
+Of these requirements, BLCR is only able to verify the availability of
+the PIDs and the existence and permissions of the executable, libraries
+and open files.&nbsp; Failure to satisfy those constraints will lead
+to an explicit failure from BLCR.&nbsp; Violation of the rules against
+modification to any files will <b>not</b> be
+detected by BLCR and the resulting effects on the restarted application
+are unpredictable.
+<p>You may restart a program on a different machine than the one it was
+checkpointed on if all of these conditions are met (they often are on
+cluster systems, especially if you are using a shared network
+filesystem), and the kernels are the same.&nbsp; The restriction on
+executables and their shared
+libraries being the same can be a problem for systems using <em>prelinking</em>;
+see the <a href="FAQ.html">BLCR FAQ</a> for information on dealing
+with systems that prelink.</p>
+<p>You can restart a process by using '<tt>cr_restart</tt>' on its
+context file:
+<pre>    % cr_restart context.15005<br></pre>
+The original process will be restored, and resume running in the exact
+state it
+was in at checkpoint time. Note that this includes restoring its
+process ID, so
+you cannot restart a program unless the original copy of it has exited
+(otherwise '<tt>cr_restart</tt>' will fail with a message that the PID
+is
+already in use).
+You may restart a process from a particular context file as many
+times as you
+wish. The context file is not automatically removed at any point, so
+you
+should delete it if/when it is no longer useful to you.
+<h2>5. Checkpointing/restarting an MPI application</h2>
+<p>The best source of information on dealing with any BLCR-aware MPI
+implementation is the documentation provided with the MPI, or the
+mailing lists for the MPI.
+<h2>6. <a name="For_more_information"></a>For more information</h2>
+For more information on Checkpoint/Restart for Linux, visit the project
+home
+page: <a href="http://ftg.lbl.gov/checkpoint" target="_top">http://ftg.lbl.gov/checkpoint</a>,
+and/or check out our
+answers to <a href="FAQ.html">Frequently Asked Questions about BLCR</a>.&nbsp;
+When those resources don't answer your questions, you may e-mail <a
+ href="mailto:checkpoint@lbl.gov">checkpoint@lbl.gov</a> for help.
+</body>
+</html>

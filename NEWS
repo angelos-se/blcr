@@ -1,0 +1,793 @@
+This file lists the significant user-visible changes between releases
+of BLCR, including main features and bug fixes.
+
+0.8.6_b4
+-----------
+October 20, 2014
+Bug fix and expanded-support release.
+ - Relative to the previous Beta:
+   + Can now parse Debian Jessie kernel naming (3.x-y vs 3.x.y).
+     Hopefully for real this time!
+   + Correct operation confirmed with 3.17.x kernels
+ - Testing is now "sufficient" for release.
+
+0.8.6_b3
+-----------
+October 6, 2014
+Bug fix and expanded-support release.
+ - Relative to the previous Beta:
+   + Fix compilation problems with recent ARM kernels
+   + A couple minor bug fixes
+   + Can now parse Debian Jessie kernel naming (3.x-y vs 3.x.y).
+   + autogen.sh now supports recent automake versions
+ - Testing on x86, x86-64, ppc and ppc64 now "sufficient" for release.
+
+0.8.6_b2
+-----------
+September 29, 2014
+Bug fix and expanded-support release.
+ - Relative to the previous Beta:
+   + Fix compilation problems with recent PPC/PPC64 kernels
+ - Testing on CPUs other than x86-64 remains "thin".
+ - The issue with Debian Jessie kernel naming remains UNresolved.
+
+0.8.6_b1
+-----------
+September 19, 2014
+Bug fix and expanded-support release.
+ - This release adds support for "vanilla" Linux kernels up to 3.16,
+   and has been tested with x86-64 3.x kernels from several popular
+   distributions.
+ - Testing on other CPUs will precede release of the final 0.8.6.
+ - This release fixes the following user-visible bugs and "issues"
+   + Fix bug 3142 - stopped.st timeout on many recent kernels
+     The problem would manifest as a failure of the stopped.st test
+     in "make check" on kernels containing the fix for CVE-2013-0871.
+   + Fix bug 2620 - /proc/PID/exe not restored on restart
+     The fix has been known since Dec 2009, but had unintentionally
+     never been applied to the 0.8.x release branch.
+   + Fix support that was broken by recent "RHEL6" kernels (such as
+     2.6.32-431.23.3.el6.x86_64).
+   + Fix possible deadlock in pid-restore code
+ - This release is known NOT to work with Debian Jessie kernels due
+   to their kernel naming scheme (3.x-y) which BLCR's configure logic
+   does not recognize.  This should be fixed in the final 0.8.6.
+
+0.8.5
+-----------
+January 29, 2013
+Bug fix and expanded-support release.
+ - This release fixes the following user-visible bugs and "issues"
+   + This release adds support for "vanilla" Linux kernels up to 3.7.x
+   + Fixes "vdso remap failed" errors on x86 platforms.
+   + Fixes support for Xeon Phi
+   + Fixes support for ARMv7 CPUs and for ARM THUMB2 kernels
+   + Fixes to work with more recent autotools, glibc, rpmbuild, etc...
+   + Fixes for memory regions larger than 4G
+   + Numerous other minor bugs
+ - RPM packaging improvements
+   + Now supports "rpmbuild --define 'with_multilib 0' ..." to disable
+     building of 32-bit libs on 64-bit targets.
+   + "make rpms" now works correctly when run in non-English locales
+ - This release is known NOT to work with 3.8.x kernels
+
+0.8.4
+-----------
+October 11, 2011
+Bug fix and expanded-support release.
+ - This release fixes the following user-visible bugs and "issues"
+   + This release adds support for "vanilla" Linux kernels up to 2.6.38.
+   + This release adds support for recent RHEL5 kernels.
+   + Occasional "random" failures on x86 have been identified and fixed.
+
+0.8.3
+-----------
+August 15, 2011
+Bug fix and expanded-support release.
+ - This release fixes the following user-visible bugs and "issues"
+   + More options for dealing with BLCR-vs-NSCD conflicts.  See the BLCR
+     FAQ entry 'Why do I get "vmadump: mmap failed: /var/db/nscd/[something]"
+     in the system logs?' for a list of one's options.
+   + This release adds support for "vanilla" Linux kernels up to 2.6.34.
+   + bug 2594 - dpipe.ct and forward.ct fail "while restoring external pipe"
+ - This release has known issues some RHEL5-derived kernels.  Specifically,
+   + auditing cr_restart can cause a kernel BUG() message to be issued
+   + the vdso page is misidentified during restart of 32-bit
+     processes on x86_64 kernels.  You'll see the following error:
+     do_mmap(0, ffffe000, 00001000, ...) = 0xfffffffffffffff4 (failed)
+   + --save-all is not supported for restart of 32-bit processes on x86_64
+     kernels.  If you try to restore such a process, you'll see cr_restart
+     will fail with the error:
+     Failed to locate newborn mmap()ed space
+   A patch for the RHEL5 kernels that addresses these issues is available on 
+   the web site:
+   https://upc-bugs.lbl.gov/blcr-dist/blcr-0.8.3+kernel-2.6.18.el5.patch01
+   We haven't fully tested the rhel5 patch on non-el5 kernels (that's why it's 
+   not in the release), so we recommend you apply the RHEL5 patch ONLY if you
+   are running a 2.6.18 el5 kernel.
+
+The next release, BLCR 0.8.4, will merge support for RHEL5 kernels, and add
+support for 2.6.35 kernels.
+
+0.8.2
+-----------
+June 16, 2009
+Bug fix and expanded-support release.
+ - This release adds support for 2.6.30 kernels
+ - This release fixes the following user-visible bugs and "issues"
+   + "waitpid(0)" error when restarting a process that was a child of init
+   + A race that would infrequently cause an abnormal restart to hang
+
+0.8.1
+-----------
+March 25, 2009
+Bug fix and expanded-support release.
+ - This release adds support for 2.6.29 kernels.
+ - The final known xen-specific bug (2457) has been found to be a Xen bug.
+   Xen 3.1.2 or newer is recomended when using BLCR.
+ - This release makes the following libcr API additions/changes:
+   + Increase CR_MAX_CALLBACK from 32 to 32 million.
+ - This release adds additional error checking and improved documentation
+   for error cases for the following libcr functions:
+   + cr_register_callback()
+   + cr_replace_callback()
+   + cr_register_hook()
+ - This release fixes the following user-visible bugs and "issues"
+   + 2508 - inconsistent metadata from a networked file system
+   + 2520 - possible deadlock when using some functions with critical sections
+   + 2524 - restart-time SEGV on powerpc with 2.6.15 or older kernel
+   + 2525 - process deadlock on checkpoint after restart
+   + 2526 - process deadlock between omit and forward operations
+   + C++ scoping problem for "struct cr_rstrt_relocate_pair"
+   + Correct a bug that would reset the persist count across checkpoints
+   + Prevent "stuck" tests when TOSTOP bit is set in termios.c_lflag.
+   + Correct flaws in tests "prctl" and "stage0002" that could yield false
+     failures under certain conditions
+
+0.8.0
+-----------
+January 12, 2009
+Enhanced functionality and expanded-support release.
+ - This release adds support for 2.6.26, .27 and .28 kernels.
+ - In this release support for Xen is no longer considered experimental.
+   However, there is still one known xen-specific bug (2457) in which
+   the FPU state may become corrupted w/ paravirtualized kernels.
+ - In this release the majority of checkpoint I/O is performed using
+   O_DIRECT when available, significantly reducing the cost of checkpointing
+   any process which uses a large fraction of the physical memory.
+ - This release includes an unfinished port to SPARC64, contributed by
+   Vincentius Robby <vincentius@umich.edu> and Andrea Pellegrini
+   <apellegr@umich.edu>.  Anyone willing/able to help complete this port
+   should contact checkpoint@lbl.gov.
+ - As previously announced, this release removes support for 2.4.x kernels
+   that contain backported NPTL support (e.g. RH9 and RHEL kernels).  Support
+   for all other 2.4.x kernels was removed in 0.7.0.
+ - This release merges the blcr_vmadump kernel module into the blcr module.
+ - This release adds preliminary support for the "Fault Tolerance Backplane"
+   (FTB).  See README.FTB for more information.
+ - This release adds the following features to the cr_checkpoint utility:
+    + --kmsg-{none,error,warning} options to control reporting of kernel-level
+      errors and warnings messages when taking a checkpoint.
+ - This release adds the following features to the cr_restart utility:
+    + --kmsg-{none,error,warning} options to control reporting of kernel-level
+      errors and warnings messages when restarting from a checkpoint.
+    + --[no-]restore-{pid,pgid,sid} options to control restore of the
+      process id, process group id, and session id.  The default remains as
+      in prior releases: restore only pid.
+ - This release makes the following libcr API additions/changes:
+    + The following functions were announced in May 2008 as scheduled for
+      removal in 0.8.0.  They have not been removed, but have been marked
+      with gcc's "deprecated" attribute to produce a compiler warning if used.
+       * cr_request()
+       * cr_request_file()
+       * cr_request_fd()
+    + These functions have been added for controlling checkpoint requests:
+       * cr_wait_checkpoint()
+       * cr_reap_checkpoint()
+       * cr_log_checkpoint()
+       * cr_poll_checkpoint_msg()
+      The wait and reap functions expose independently the two steps taken in
+      the existing cr_poll_checkpoint() function.  The log function collects
+      kernel-level error or warning messages if called between wait and reap.
+      The poll...msg() function is a convenience function, documented and
+      implemented in terms of the wait, log and reap functions.
+      The cr_poll_checkpoint() function will remain in libcr, but is now
+      documented and implemented in terms of cr_poll_checkpoint_msg().
+    + A new CR_CHKPT_ASYNC_ERR flag to cr_request_checkpoint() defers the
+      reporting of almost all errors in a call to cr_request_checkpoint()
+      until the call to cr_reap_checkpoint() or cr_poll_checkpoint[_msg]().
+    + The following functions have been added for making restart requests
+      via library calls, rather than using the cr_restart utility.  These
+      are all marked "EXPERIMENTAL" as there might be significant changes
+      to these calls in the future.
+       * cr_initialize_restart_args_t()
+       * cr_request_restart()
+       * cr_wait_restart()
+       * cr_reap_restart()
+       * cr_log_restart()
+       * cr_poll_restart_msg()
+       * cr_poll_restart()
+    + The struct members "old" and "new" in struct cr_rstrt_relocate_pair
+      have been renamed to "oldpath" and "newpath".  This change was required
+      because "new" is a C++ reserved word.
+   See the comments in include/libcr.h for API documentation.
+ - This release makes the following additions/changes to the BLCR test suite:
+    + Add tests of many of the features new to this release
+    + Add new tests, or cases to existing tests, for reproducing several
+      of the bugs fixed in this release.
+    + Fix command lines used in several tests to function correctly when
+      "POSIXLY_CORRECT" is set in the environment
+    + Recode crut_wrapper and seq_wrapper in C, rather than perl, to allow
+      running the full testsuite in environments without perl (such as
+      embedded ARM platforms).
+ - This release fixes the following user-visible bugs and "issues"
+    + 2021 - Provide extended error reporting mechanism
+    + 2056 - Eliminate perl wrappers
+    + 2287/2437 - Xen segment selector problems
+    + 2292 - --restore-ids does not work correctly for multithreaded processes.
+    + 2317 - implement "async" request errors 
+    + 2318 - checkpoint hangs after SEGV
+    + 2322/2446 - Failure when stack limit is too big
+    + 2344 - bad cr_restart usage causes kernel oops
+    + 2453 - loss of sigaltstack across restart
+    + 2454 - Oops in FPU restore
+    + Address bug 2448 - there may have been a race with cr_close_other()
+    + Fix ENOMEM when checkpointing processes with no supplementary group IDs
+    + i386 FPU restore code would fail to notice corrupt i387 state
+    + Fix a bug in the ARM atomics
+    + Fix several issues with restart of 64-bit processes with a 32-bit
+      requester, as exposed by the addition of cr_request_restart() to libcr.
+
+0.7.3
+--------
+August 12, 2008
+Bug fix release
+ - Fix a kernel Oops on a rarely run error path.
+ - Fix a in-kernel memory leak when restoring unlinked files.
+ - Fix a file descriptor leak when cr_request_checkpoint() failed.
+ - Fix fsync() handling to allow checkpoints to /dev/null
+ - Fix bug 2309: cr_enter_cs() fails because of previous cri_info_free().
+   This bug was resolved by adding two new functions:
+     cr_inc_persist() and cr_dec_persist()
+   See comments in libcr.h for a description and usage.
+ - Fix bug 2311: vmadump_thaw_proc() returns -513.
+ - Fix bug 2315: ENOMEM with processes with zero supplementary group IDs.
+ - Fix bug 2316: "mkdir: file exists" module installation problem.
+
+0.7.2
+--------
+July 28, 2008
+Bug fix release
+ - Fix a logic error in use of kernel-level synchronization primitives.
+ - Fix a 32-bit VDSO restore bug on x86-64 2.6.23 and 2.6.24 kernels.
+ - Fix a kernel Oops seen with RH9 2.4.x kernels
+ - Fix bug 2298: compile error cr_io.o on SLES10sp2
+ - Fix bug 2300: restart fails for open file >2GB
+ - Fix bug 2302: block all signals in internal thread
+
+0.7.1
+--------
+June 25, 2008
+Bug fix and expanded-support release
+ - Fix (part of) bug 2263, allowing nested use of cr_run.
+ - Fix bug 2251, allowing use of HUGETLB_MORECORE=y with libhugetlbfs.
+ - Fix bug 2295 (restart failure w/ heap > 4GB).
+ - Fix sporadic EPERM failures when checkpointing encounters a zombie proc.
+ - Add support for 2.6.26-rc7 kernel.
+   While we don't officially support -rc<N> kernels, it is hoped that
+   these changes will be sufficient to support the final 2.6.26.
+ - Add cr_hold_ctrl(), allowing control over the thread hold behavior.
+   This is required to restore the 0.6.X behavior for at least one
+   application that would deadlock with the 0.7.X default behavior.
+
+0.7.0
+--------
+May 30, 2008
+Enhanced functionality and expanded-support release.
+ - This release adds support for 2.6.25 kernels.
+ - This release adds EXPERIMENTAL support for 32-bit PPC platforms.
+ - This release adds EXPERIMENTAL support for Xen-enabled kernels (both
+   dom0 and domU).  In our testing so far it either works great or not
+   at all, depending on the installation.  We have not yet identified
+   what distinguishes the working systems from the broken ones, and
+   would appreciate feedback on your success or failure using BLCR
+   with Xen-enabled Linux kernels.
+ - As previously announced, this release removes support for 2.4.x kernels
+   with the current exception of the RH9 and RHEL kernels (and derivatives)
+   that contain backported NPTL support.  These too may be removed in the
+   not too distant future.
+ - As previously announced, this release begins the removal of support for
+   LinuxThreads.  If you are using LinuxThreads you may experience random
+   failures in the BLCR testsuite and with your own multithreaded apps.
+   New interest in using BLCR with non-GNU libc may lead to a return of
+   LinuxThreads support.  Please contact us if you have interest it this.
+ - This release adds the following features to the cr_checkpoint utility:
+    + --quiet option to suppress output from cr_checkpoint
+    + --noclobber option (don't disturb existing files)
+    + Options for treatment of ptrace() child and parent processes:
+       --ptraced-{error,skip,allow}
+       --ptracer-{error,skip}
+    + Options to save/restore executables and libraries in context files:
+       --save-{exe,private,shared,all,none}
+   See the cr_checkpoint manpage for more details on each of these.
+ - This release adds the following features to the cr_restart utility:
+    + --quiet option to suppress output from cr_restart
+      Previously there was no way to do so without also losing the output
+      of the restarted process(es).
+    + Add --run-on-* family of options to provide user-specified error
+      handling hooks.  Previously there was no way to automatically/safely
+      distinguish a failure of cr_restart from a non-zero exit from the
+      restarted application.  This resolves bug 1974.
+    + Add --relocate option to enable restart-time replacement of file and
+      and directory paths saved in the context file.
+    + Add --fd option to restore from an open fd, rather than a file.
+   See the cr_restart manpage for more details on each of these.
+ - This release adds the following feature to the cr_run utility:
+    + --omit option to run a process with BLCR support such that the
+      process (and its descendants) will be omitted from checkpoints.
+ - This release makes the following libcr API additions/changes:
+    + cr_forward_checkpoint() is fully tested and thus no longer labeled
+      as "use at your own risk".  Its documentation in libcr.h is now
+      complete as well.
+    + cr_register_hook() is fully tested and thus no longer labeled
+      as "use at your own risk".
+    + As anticipated in previous releases, the error code returned from
+      cr_poll_checkpoint() has CHANGED for the case of restarting from a
+      checkpoint of oneself.  This may break existing code that will not
+      be prepared for the new errno value.  However, the previous value
+      of EINVAL could have masked actual invalid-argument errors.
+      The alternative of returning 0 (success) was considered, but was
+      discarded because it was deemed valuable to be able to reliably
+      distinguish whether one was continuing or restarting from a
+      checkpoint of oneself.
+    + As alternatives to CR_ETEMPFAIL and CR_PERMFAIL, authors of BLCR
+      callbacks can now specify the errno values to be returned to the
+      checkpoint requester on a case-by-case basis.
+    + cr_tryenter_cs() has been added as a non-blocking alternative to
+      the cr_enter_cs() function.
+    + Several functions that would previously respond to usage errors
+      with an abort() or an undefined behavior now return -1 with one of
+      two new values of errno:
+       * CR_ENOINIT  - caller has not made the required call to cr_init()
+       * CR_ENOTCB   - call is only valid from a checkpoint callback
+    + The following functions are marked as deprecated:
+       * cr_request()
+       * cr_request_file()
+       * cr_request_fd()
+      They do not provide any mechanism to specify the checkpoint scope
+      or to detect errors.  They are currently implemented as (awkward)
+      wrappers around cr_request_checkpoint() and cr_poll_checkpoint().
+      They are scheduled to be removed in 0.8.0.
+   See the comments in include/libcr.h for API documentation.
+ - This release introduces two "stub" libraries: libcr_run and libcr_omit.
+   They differ from the "full" libcr library in that they contain only a
+   BLCR signal handler and the initialization code to register it.  They
+   do not include any of the entry points declared in libcr.h, and the
+   handler code does not run any callbacks.
+   The cr_run utility now uses these libraries in LD_PRELOAD variable,
+   rather than the full libcr.so used in previous releases.
+   See the BLCR User's Guide for information on using these libs.
+ - This release makes several additions to the BLCR test suite, including
+   tests of most of the features new to this release and some motivated by
+   bugs fixed in this release.  Many existing tests have been expanded to
+   exercise additional corner cases.
+ - This release makes the following changes to "configure" behavior:
+    + The --with-linux= option now accepts a kernel revision (the output
+      or "uname -r") as a value, causing configure and search for that
+      revision in some standard locations.  This is intended to make it
+      easier and less error prone to specify for which kernel to build.
+      In most modern distributions, this single option will be sufficient
+      to configure BLCR for any installed kernel.
+    + Previously --with-linux= would be used to specify a kernel source 
+      directory, and if needed --with-linux-obj= could be given to help
+      find the corresponding build directory.  With this release the
+      role of --with-linux= as changed to be that of a build directory
+      and the option --with-linux-src= is available if the sources can't
+      be found automatically.
+    + The configure-time probes of the kernel headers and configuration
+      are now performed using the full CFLAGS/CPPFLAGS from the Linux
+      kbuild infrastructure.  This ensures proper configuration with
+      Xen-enabled kernels that prepend Xen-specific components to the
+      include path.
+    + At configure time one can set KCC to specify that the kernel
+      modules are to be built with a different C compiler than the
+      user-space components of BLCR.
+ - On the ARM platform, the "good enough for LinuxThreads" implementation
+   of atomic operations has been replaced with truly atomic ops based
+   on the kernel-level support added for NPTL.
+ - As a temporary work-around for bug 2251, BLCR will currently refuse
+   to checkpoint processes with files on hugetlbfs mmap()ed with the
+   MAP_PRIVATE flag.  This is to avoid potentially serious instability
+   that may result if BLCR attempts to checkpoint such a process.
+ - Fixes the following user-visible bugs and "issues"
+    + 1974 - Make it possible to decide whether a restart succeeded
+    + 2023 - ARM atomics need update
+    + 2042 - libcr.so not linked to libc
+    + 2124 - Make check fails at pid_in_use.st
+    + 2214 - close cri_live_count race
+    + 2216 - Move post-restart signal delivery to post-callback
+    + 2247 - BLCR assumes 64-bit gcc on 64-bit arch
+    + 2248 - Separate CC and KCC
+    + 2265 - CR_CHECKPOINT_OMIT generates 0 byte context file
+    + 2266 - process doing CR_CHECKPOINT_TEMP_FAILURE is killed!
+    + 2271 - cr_checkpoint --clobber fails to overwrite file
+    + 2272 - cr_get_restart_info returns wrong src path
+    + 2274 - Invalid (zero or huge) pids seen at restart time
+    + Remove bash-specific assumptions in the tests
+    + Stronger validation of BLCR against proper kernel version
+    + Validation of BLCR's kernel module versions against each other
+    + Performance improvements from better memory management and
+      from coalescing of background work.
+    + Preserve error codes for I/O errors.  Previously any error
+      from a read/write at kernel level was reported as EIO.  Now
+      the original errors (such as ENOSPC) are preserved.
+    + Several others found by internal testing or reported by email
+      and fixed without assigning bug numbers.
+ - The file contrib/blcr.magic contains the format description needed
+   by the "file" utility to identify BLCR's context files.
+
+0.6.5
+--------
+February 29, 2008
+Bug-fix release.
+ - This release fixes a bug that could corrupt the kernel's pid hash
+   data structures if a restart failed due to a pid conflict on
+   kernels 2.6.17 and newer.
+ - This release fixes a use-after-free bug in the code for aborting
+   a checkpoint that could have caused a kernel Oops.
+
+0.6.4
+--------
+January 28, 2008
+Bug-fix and expanded-support release.
+ - This release adds support for 2.6.24 kernels.
+ - This release fixes bug 2234 which could cause a kernel Oops when
+   dealing with mmap()s of HUGETLBFS on some kernels.
+
+0.6.3
+--------
+January 22, 2008
+Bug-fix release.
+ - This release fixes bug 2001 which was causing intermittent floating-
+   point register corruption on x86-64, even after BLCR was unloaded.
+
+0.6.2
+--------
+January 14, 2008
+Bug-fix and expanded-support release.
+ - This release adds support for 2.6.23 kernels.
+ - This release adds support for SuSE's 2.6.22.x kernels.
+ - This release fixes a file descriptor leak that occurred on restart from
+   a checkpoint-of-self requested via cr_request_checkpoint().
+ - This release fixes a deadlock (and unkillable process(es)) when a
+   multi-threaded process aborts (or omits itself from) a checkpoint
+   under certain conditions.
+ - This release fixes a restart-time failure when a checkpoint includes a
+   pipe with one end outside the checkpoint scope, and data is buffered
+   in the pipe.
+ - This release fixes a bug with the cr_request{,_file}() calls in which
+   a failed checkpoint would cause failure of the next one if it had the
+   same destination file name.
+ - This release fixes a race condition with the cr_enter_cs() and checkpoints
+   in multi-threaded processes.
+ - This release fixes post-checkpoint signal delivery (--stop and friends)
+   to occur after the checkpoint is fully completed.  See bug 2201 for
+   a full description of the problems addressed by these changes.
+ - This release documents (and fully implements) signal-delivery options
+   to cr_restart (see bug 2200).
+ - This release fixes two kernel Oopses (bugs 2222 and 2223) due to races
+   against processes/threads that are exiting.
+ - Adds test cases for most of the bugs fixed in this release.
+ - Minor improvements/changes to documentation
+ - Other minor bug fixes
+
+0.6.1
+--------
+September 25, 2007
+Bug-fix release
+ - This release resolves build and run-time issues seen on Debian "sid".
+ - This release eliminates the need to manually set __LINUX_ARM_ARCH__ at
+   configure time (ARM platform only).
+ - This release fixes a file descriptor leak that occurred on failure of a
+   checkpoint requested using any of the cr_request{,_file,_fd}() calls.
+ - This release fixes a race condition and a LinuxThreads incompatibility
+   in the "hooks" test (which is not run by default).
+
+0.6.0
+--------
+September 10, 2007
+Functionality and expanded-support release.
+ - This release adds support for 2.6.22 kernels.
+ - This release includes experimental support for PPC64 platforms
+    + PPC64 supports both 32- and 64-bit applications.
+    + No support for 32-bit kernels.
+      Contact us if you would like to help w/ a PPC32 port.
+    + No support for 2.4.x kernels
+    + Tested with NPTL and kernels 2.6.12 (Gentoo) and 2.6.18 (FC6)
+    + There are known problems with BLCR with LinuxThreads on PPC64
+ - This release includes experimental support for ARM platforms.
+    + Tested only for 2.6.12 and newer kernels
+    + Thanks to Anton V. Uzunov <anton.uzunov@dsto.defence.gov.au>
+      of the Australian Government Department of Defence, Defence
+      Science and Technology Organisation for contributing this port.
+    + ARM-specific questions should be directed to blcr-arm@hpcrd.lbl.gov
+ - This release includes experimental support for cross-compilation.
+    + See config/cross_helper.c for information on cross-compilation.
+    + This has been tested only in the context of the ARM port
+    + Thanks to Anton V. Uzunov for motivating and testing this work
+ - This release includes a new API for issuing a checkpoint request.
+    + Allows a program to request a checkpoint without the need to invoke
+      system("cr_checkpoint ...").
+    + See comments in include/libcr.h for information on the following:
+      cr_initialize_checkpoint_args_t()
+      cr_request_checkpoint()
+      cr_poll_checkpoint()
+ - This release adds a mechanism (CR_CHECKPOINT_OMIT) for processes to
+   exclude themselves from a checkpoint (useful for batch-system helper or
+   shepherd processes).
+ - This release makes cr_checkpoint and cr_restart utilities checkpointable
+ - This release adds full support for mmap()-based shared memory
+    + Repairs the loss of sharing that existed in 0.5.x releases
+    + Supports hugetlbfs
+ - This release adds full support for save/restore of pending signals.
+ - Default scope of cr_checkpoint is now --tree, rather than --pid.
+ - Now checkpoint/restart unlinked open files.
+ - Revised handling of certain file-descriptors at restart:
+   + No longer override "normal" files with correspondingly-numbered fds
+     from cr_restart as that consistently breaks shell "here documents".
+   + Restore pipes endpoints that lie outside the checkpoint scope by
+     attaching them to stdin or stdout of cr_restart, rather than to its
+     correspondingly-numbered fds.
+   + Opens of a process's controlling tty are attached to "/dev/tty" at
+     restart, even if they were open by their "exact" name at checkpoint
+     time (e.g.  "/dev/pts/0").
+ - Experimental support for relocatable kernels on x86 and x86-64
+ - Expanded test-suite
+ - Option to install the testsuite (--enable-testsuite)
+ - Support "install-strip", "install-exec" and "install-data" make targets
+ - Tested against many scripting and programming language environments:
+   + shells:  ash, bash, (t)csh, (pd)ksh and zsh
+   + scripting-type languages: perl, python, tcl/expect, ruby and guile
+   + java runtime environments: Sun, IBM and GNU
+   + misc. language runtimes: php, rep, clisp, emacslisp, gst, ocaml and sml
+   + Run "make bonus-tests" to run these tests on your own machine, but be
+     warned that the tests themselves are fragile (contain races) and may
+     experience random failures.  However, please do report any tests that
+     fail consistently.
+ - Many minor bug fixes and code cleanups
+
+July, 2007 - DEPRECATED support for LinuxThreads and for Linux 2.4.X kernels
+ - Starting with the 0.6.0 release, new bug reports that one cannot reproduce
+   under NPTL + Linux 2.6.x will receive little or none of our attention.
+   However, we will try to distribute user-contributed fixes for such bugs.
+   Note that the 0.6.0 release *does* pass the BLCR test-suite under
+   LinuxThreads and/or 2.4.x kernels on the developers' x86 systems.
+   However, we have seen test failures on PPC64 when running LinuxThreads
+   with a 2.6.12 kernel (Gentoo distro).
+ - Beginning with the next "full" release (0.7.0) we will begin to remove
+   code in BLCR that exists only to support LinuxThreads and/or Linux 2.4.x.
+ - We have not yet decided the fate of support for those 2.4.x kernels which
+   include Red Hat's backport of NPTL support (RHL9.0, RHEL, RHAS, etc.).
+ - If anybody cares enough about 2.4.x and/or LinuxThreads to volunteer to
+   take over testing and maintenance of BLCR on such platforms, let us know.
+
+0.5.6
+--------
+July 11, 2007
+Bug-fix release.
+ - Fix a bug that could incorrectly restore data buffered in a pipe.
+
+0.5.5
+--------
+April 27, 2007
+Expanded-support release.
+ - This release adds support for 2.6.21 kernels.
+
+0.5.4
+--------
+April 20, 2007
+Bug-fix release.
+ - Multiple bug fixes, including:
+   + Bug 1972: Restart pid-conflict could cause kernel Oops
+   + Bug 1977: Unintended 2GB limit on application working set
+   + Compilation problems on some x86_64 kernels (map_vsyscall undefined)
+
+0.5.3
+--------
+March 29, 2007
+Bug-fix release.
+ - Multiple bug fixes, including:
+   + Bug 1961: Checkpoint of zombie yields kernel Oops.
+   + Bug 1967: Restart failed: Bad address
+   + Unkillable cr_restart if multi-threaded restart failed due to pid in use.
+
+0.5.2
+--------
+March 23, 2007
+Bug-fix release.
+ - Multiple bug fixes, including:
+   + Bug 1949: cr_request*() functions need original context file to restart
+   + Bug 1954: "cr_checkpoint -T" yields "invalid option"
+   + Bug 1955: mmap(PROT_READ, MAP_SHARED) broken for read-only files
+ - Add "with_autoreconf" option to rpm specfile.
+
+0.5.1
+--------
+March 20, 2007
+Expanded-support and minor improvement release.
+ - Expanded kernel coverage
+   + Add support for 2.6.17-5mdv and its updates (Mandriva 2007)
+   + Add support for 2.6.20
+ - Fix -fstack-protector problems w/ the .src.rpm on FC6
+ - Eliminate harmless undefined symbol warnings from MODPOST
+
+0.5.0
+--------
+March 2, 2007
+Functionality and expanded-support release.
+ - Expanded kernel coverage
+   + 2.6.0 through 2.6.19 for x86 and x86_64
+   + 2.4.0 through 2.4.34 for x86 only
+ - Multi-process support (related processes and associated pipes)
+   + See BLCR_Users_Guide.html and the cr_checkpoint man page
+ - Support for 32-bit apps on 64-bit kernels
+   + See "--enable-multilib" in BLCR_Admin_Guide.html
+ - Support for directories opened with opendir()
+ - Support for open()s of /dev/{null,zero,full,random,urandom}
+ - Support for checkpoints on Luster file systems
+   + Contributed by Dean Luick <luick@cray.com>
+ - Support for building static libcr
+   + Contributed by Dean Luick <luick@cray.com>
+ - Fixes to many distclean problems
+   + Issues identified by Dean Luick <luick@cray.com>
+ - I/O aggregation for improved performance
+   + Contributed by Qi Gao <qaoq@cse.ohio-state.edu>
+ - Additional examples and test cases
+ - API addition: cr_get_restart_info()
+ - "Retool" of configure code for ease of addition/maintenance
+ - Numerous bug fixes, including:
+   + Bug 1240: pid leak on restart failure
+   + Bug 1396: SIGPIPE when restarting w/ stdin/out from/to a pipe
+   + Bug 1640: context files > 2GB require O_LARGEFILE 
+   + Bug 1662: context files open R/W leads to restart failure
+   + Bug 1669: checkpoint to a socket fails
+   + Bug 1807: unrecognized warning suppression flag passed to gcc
+   + Bug 1854: libcr link failure w/ stack-protection-enabled gcc
+   + Bug 1925: link failure w/ pthread_atfork() on some glibc versions
+   + Bug 1933: crash restoring dup of ignored fd (socket or chrdev)
+   + Incorrect treatment of certain anonymous mmap() cases
+   + MAP_SHARED mmap()ed regions would become MAP_PRIVATE upon restart
+     * NOTE: We still fail to restore any sharing among processes
+       when using MAP_ANONYMOUS or when mapping an unlinked file.
+       However, children fork()ed after a restart will now correctly
+       share with their parent.
+       FIXING THE LOST SHARING IS A HIGH-PRIORITY ITEM FOR 0.6.0
+   + Wrong parent for restored orphans (children of init)
+   + dup()ed file descriptors always restored together
+
+0.4.2
+--------
+November 22, 2005
+Functionality and bug-fix release.
+ - 2.6.x kernel support "stable"
+ - x86_64 support "stable" (but there is no support for 32-bit apps)
+ - Multiple bug fixes (some critical)
+
+0.4.1_b5
+--------
+October 10, 2005
+BETA bug-fix release.
+ - Multiple bug fixes (some critical)
+
+0.4.1_b4
+--------
+August 24, 2005
+BETA bug-fix release.
+ - Multiple bug fixes (some critical)
+
+0.4.1_b3
+--------
+July 29, 2005
+BETA bug-fix and functionality release.
+ - Fix inter-module dependencies under 2.6 kernels.
+ - Fix empty /etc/init.d/blcr in rpms
+
+0.4.1_b2
+--------
+July 6, 2005
+BETA bug-fix and functionality release.
+ - Opteron support completed (but experimental).
+ - Improved coverage of 2.6.x kernels (still considered experimental):
+   + At least minimal testing under SuSE 9.{2,3} and Fedora Core {2,3,4}
+   + Example init script updated for 2.6.x
+   + Updates to Admin Guide for Fedora-isms
+ - Fixed file truncation bug
+ - Fixed signal trampoline bug with RHAS
+ - Support for Scalable Systems Software advanced to Fedora Core 2
+ - Some "dirty tricks" have been reimplemented with cleaner solutions:
+   + New method for syscalls that bypass glibc
+   + Better-supported signal trampolines (work w/ gcc 2.96 through 4.0.0)
+   + More robust mechanism for module symbols (linker rather than cpp)
+   + More robust mechanism for restart time thread creation
+ - Cleanups of .spec file to work w/ latest rpm version.
+
+0.4.1_b1
+--------
+Not publicly released.
+
+0.4.0
+-----
+February 18, 2005
+Functionality release.
+ - Add experimental support for Linux 2.6.x kernels.
+ - Many changes as part of an in-progress Opteron port (incomplete).
+
+0.3.1
+-----
+December 1, 2004
+Bug-fix release.
+ - Fix a bug which rendered cr_run useless for most applications.
+ - Add athlon support to the RPM specfile and generally improve cpu
+   support in the specfile by honoring --target.
+ - Fix a race condition in pthreaded tests with LinuxThreads.
+ - Minor improvements to Admin Guide, including fixing a confusing typo.
+
+0.3.0
+-----
+November 8, 2004
+Functionality release.
+ - Files support is now enabled by default and no longer "experimental".
+ - Support for Scalable Systems Software (http://sss-oscar.sf.net).
+ - Fix libcr.so to allow use via dlopen().
+ - Many small bug fixes.
+ - Security fix related to LDT/TLS restore.
+ - Support for more kernel versions, including RHEL3 and CentOS 3.1
+ - Much more robust configuration-time checking of kernel headers.
+ - Runtime version checking between user space and kernel module.
+ - More informative error from cr_checkpoint when target process
+   lacks checkpointing support.
+
+0.2.4 and 0.2.5
+---------------
+Snapshots for SSS-OSCAR testing.  Not publicly released.
+
+0.2.3
+-----
+April 30, 2004
+Bug-fix release.
+ - Fixed compilation error that occurred with --enable-trace.
+ - Updated timeout thread to handle new DEAD state in 2.6 kernel (also in some
+   recent 2.4 RedHat kernels).
+
+0.2.2
+-----
+April 23, 2004
+Bug-fix release.
+ - Fixed bug with --enable-files support: regular file handles now
+   saved/restored across checkpoint correctly.
+
+0.2.1
+-----
+December 05, 2003
+Bug-fix release.
+ - Fix compilation problems with certain kernels and compilers.
+   Now known to compile with kernel.org kernels as old as 2.4.0
+   and as new as 2.4.23.
+    - Tested against kernels as old as a RedHat 2.4.7-10 and as new as a
+      RedHat 2.4.20-24.9.
+    - Tested w/ gcc 2.96, 3.2, 3.2.2 and 3.3.1.
+ - Fix vfork() problem which was causing "cr_run make" (or "make"
+   with LD_PRELOAD set) to fail.
+ - Fix problem where processes restored under 2.4.23 could not
+   subsequently be ptraced or dump core.
+ - Strip debugger bloat from kernel modules.
+ - Fixed locking problems which prevented experimental files code
+   from compiling against SMP kernels.
+ - Make the rpm spec file more easily reusable for different kernels.
+ - Modules now include proper version and contact info in syslog.
+ - Proper use count is now kept by modules.
+
+0.2.0
+-----
+November 20, 2003
+Initial public release.
