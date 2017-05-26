@@ -1103,12 +1103,12 @@ AC_DEFUN([CR_LINUX_SYMTAB_VALIDATE],[
 AC_DEFUN([_CR_KSYM_INIT_PATTS],[
   case "$CR_KARCH" in
     ppc64)
-      CR_KSYM_PATTERN_DATA=['[bBdDgGrRsStTvV] ']
-      CR_KSYM_PATTERN_CODE=['[dD] ']   dnl Function descriptor is data
+      CR_KSYM_PATTERN_DATA=['[bBdDgGrRsStTvVwW] ']
+      CR_KSYM_PATTERN_CODE=['[dDwW] ']   dnl Function descriptor is data
       ;;
     *)
-      CR_KSYM_PATTERN_DATA=['[bBdDgGrRsStTvV] ']
-      CR_KSYM_PATTERN_CODE=['[tT] ']
+      CR_KSYM_PATTERN_DATA=['[bBdDgGrRsStTvVwW] ']
+      CR_KSYM_PATTERN_CODE=['[tTwW] ']
       ;;
   esac
 ])
@@ -1250,7 +1250,7 @@ AC_DEFUN([CR_FIND_EXPORTED_KSYM],[
 # Find how to rpmbuild (if possible at all)
 AC_DEFUN([CR_PROG_RPMBUILD],[
   AC_PATH_PROGS([RPMBUILD],[rpmbuild rpmb rpm],[none],[$PATH:/usr/lib/rpm])
-  if $RPMBUILD -bs 2>&1 | grep 'no spec' >/dev/null 2>/dev/null; then
+  if $RPMBUILD --usage 2>&1 | grep buildroot >/dev/null 2>/dev/null; then
     :
   else
     RPMBUILD=none
